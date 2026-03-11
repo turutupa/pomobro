@@ -89,7 +89,7 @@ export function SettingsDropdown() {
                 <button
                   type="button"
                   onClick={() => setTheme("light")}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
                     theme === "light"
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
@@ -103,7 +103,7 @@ export function SettingsDropdown() {
                 <button
                   type="button"
                   onClick={() => setTheme("dark")}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
                     theme === "dark"
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
@@ -117,7 +117,7 @@ export function SettingsDropdown() {
                 <button
                   type="button"
                   onClick={() => setTheme("system")}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
                     theme === "system"
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
