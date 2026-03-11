@@ -36,6 +36,9 @@ export function SendToPhoneModal({ workouts, onClose }: SendToPhoneModalProps) {
 
   if (typeof window === "undefined") return null;
 
+  // QR codes max out at ~2.9KB; longer URLs cause "Data too long" error
+  const qrFits = shareUrl.length <= 2500;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -53,11 +56,15 @@ export function SendToPhoneModal({ workouts, onClose }: SendToPhoneModalProps) {
         </h2>
         <div className="flex flex-col items-center gap-4 p-5">
           <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
-            Scan this QR code on your phone to import {workouts.length} workout{workouts.length !== 1 ? "s" : ""}
+            {qrFits
+              ? `Scan this QR code on your phone to import ${workouts.length} workout${workouts.length !== 1 ? "s" : ""}`
+              : "Too much data for a QR code — use Copy URL and open it on your phone"}
           </p>
-          <div className="flex justify-center rounded-xl bg-white p-4 dark:bg-zinc-800">
-            <QRCodeSVG value={shareUrl} size={200} level="M" />
-          </div>
+          {qrFits ? (
+            <div className="flex justify-center rounded-xl bg-white p-4 dark:bg-zinc-800">
+              <QRCodeSVG value={shareUrl} size={200} level="M" />
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={copyUrl}

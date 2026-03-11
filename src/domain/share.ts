@@ -1,3 +1,4 @@
+import LZString from "lz-string";
 import type { Workout } from "./workout";
 
 export interface EncodedWorkout {
@@ -8,6 +9,12 @@ export interface EncodedWorkout {
 export interface EncodedWorkoutBundle {
   v: 2;
   d: string; // JSON.stringify(Workout[])
+}
+
+/** Compressed bundle (v3) - keeps URL short for QR codes */
+export interface EncodedWorkoutBundleCompressed {
+  v: 3;
+  d: string; // LZString.compressToEncodedURIComponent(JSON.stringify(Workout[]))
 }
 
 function encodeBase64Url(data: string): string {
@@ -59,9 +66,11 @@ export function decodeWorkout(encoded: string): Workout | null {
 }
 
 export function encodeWorkouts(workouts: Workout[]): string {
-  const payload: EncodedWorkoutBundle = {
-    v: 2,
-    d: JSON.stringify(workouts),
+  const json = JSON.stringify(workouts);
+  const compressed = LZString.compressToEncodedURIComponent(json);
+  const payload: EncodedWorkoutBundleCompressed = {
+    v: 3,
+    d: compressed,
   };
   return encodeBase64Url(JSON.stringify(payload));
 }
@@ -70,7 +79,10 @@ export function encodeWorkouts(workouts: Workout[]): string {
 export function decodeWorkoutOrBundle(encoded: string): Workout | Workout[] | null {
   try {
     const json = decodeBase64Url(encoded);
-    const parsed = JSON.parse(json) as EncodedWorkout | EncodedWorkoutBundle;
+    const parsed = JSON.parse(json) as
+      | EncodedWorkout
+      | EncodedWorkoutBundle
+      | EncodedWorkoutBundleCompressed;
     if (parsed.v === 1 && typeof parsed.d === "string") {
       const workout = JSON.parse(parsed.d) as Workout;
       if (!workout || !Array.isArray(workout.intervals)) return null;
@@ -78,6 +90,14 @@ export function decodeWorkoutOrBundle(encoded: string): Workout | Workout[] | nu
     }
     if (parsed.v === 2 && typeof parsed.d === "string") {
       const arr = JSON.parse(parsed.d) as unknown;
+      if (!Array.isArray(arr)) return null;
+      const valid = arr.filter((w): w is Workout => w && typeof w === "object" && Array.isArray((w as Workout).intervals));
+      return valid.length > 0 ? valid : null;
+    }
+    if (parsed.v === 3 && typeof parsed.d === "string") {
+      const decompressed = LZString.decompressFromEncodedURIComponent(parsed.d);
+      if (!decompressed) return null;
+      const arr = JSON.parse(decompressed) as unknown;
       if (!Array.isArray(arr)) return null;
       const valid = arr.filter((w): w is Workout => w && typeof w === "object" && Array.isArray((w as Workout).intervals));
       return valid.length > 0 ? valid : null;

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.svg" alt="Pomobro" width="96">
+</p>
+
 # Pomobro
 
 **Interval timer that talks.** Build HIIT, strength, and focus routines with hands-free voice guidance. No sign-in. No fluff.
