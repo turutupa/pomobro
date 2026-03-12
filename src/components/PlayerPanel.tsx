@@ -40,7 +40,7 @@ function NextIntervalInfo({ interval }: { interval: WorkInterval | RestInterval 
   );
 }
 
-function InnerPlayer() {
+function InnerPlayer({ hideControls }: { hideControls?: boolean }) {
   const { state: workoutState } = useWorkout();
   const {
     state: player,
@@ -161,7 +161,8 @@ function InnerPlayer() {
         <NextIntervalInfo interval={next} />
       </div>
 
-      <div className="flex items-center justify-between gap-4 pt-2">
+      {!hideControls && (
+        <div className="flex items-center justify-between gap-4 pt-2">
         <button
           type="button"
           onClick={() => reset(workoutState.workout)}
@@ -206,11 +207,12 @@ function InnerPlayer() {
             </>
           )}
         </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export function PlayerPanel() {
-  return <InnerPlayer />;
+export function PlayerPanel({ hideControls }: { hideControls?: boolean }) {
+  return <InnerPlayer hideControls={hideControls} />;
 }
