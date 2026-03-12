@@ -36,7 +36,7 @@ export async function resumeAudioContext(): Promise<void> {
 if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && ctx?.state === "suspended") {
-      ctx.resume();
+      ctx.resume().catch(() => {});
     }
   });
 }

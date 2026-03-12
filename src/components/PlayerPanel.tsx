@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useLayoutEffect } from "react";
+import { FaPlay, FaPause, FaUndo } from "react-icons/fa";
 import { useWorkout } from "@/state/workout-context";
 import { usePlayer } from "@/state/player-context";
 import { WorkInterval, RestInterval, expandIntervals } from "@/domain/workout";
@@ -51,10 +52,11 @@ function InnerPlayer() {
   const intervals = workoutState.workout.intervals;
   const playbackIntervals = expandIntervals(intervals);
   const sets = Math.max(1, workoutState.workout.sets ?? 1);
-  const effectiveIndex = player.isRunning ? player.currentIndex : 0;
+  const isInPlaybackMode = player.isRunning || player.isPaused;
+  const effectiveIndex = isInPlaybackMode ? player.currentIndex : 0;
   const current = playbackIntervals[effectiveIndex] ?? null;
   const isLastInterval = effectiveIndex === playbackIntervals.length - 1;
-  const hasMoreSets = player.isRunning && sets > 1 && player.currentSetIndex < sets - 1;
+  const hasMoreSets = isInPlaybackMode && sets > 1 && player.currentSetIndex < sets - 1;
   const next =
     effectiveIndex >= 0 && effectiveIndex < playbackIntervals.length - 1
       ? playbackIntervals[effectiveIndex + 1]
@@ -65,13 +67,13 @@ function InnerPlayer() {
   const inPreparation = player.isRunning && player.preparationRemaining > 0;
   const currentTotal = inPreparation ? 7 : (current?.durationSeconds ?? 0);
   const displaySeconds =
-    player.isRunning
+    isInPlaybackMode
       ? inPreparation
         ? player.preparationRemaining
         : player.secondsRemainingInInterval
       : currentTotal;
   const elapsed =
-    player.isRunning
+    isInPlaybackMode
       ? inPreparation
         ? 7 - player.preparationRemaining
         : currentTotal > 0
@@ -105,7 +107,7 @@ function InnerPlayer() {
           <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 dark:text-zinc-500">
             Current interval
           </div>
-          {player.isRunning && sets > 1 && (
+          {isInPlaybackMode && sets > 1 && (
             <div className="text-[10px] font-semibold uppercase tracking-wider text-white/80 dark:text-zinc-500">
               Circuit {player.currentSetIndex + 1} of {sets}
             </div>
@@ -131,11 +133,13 @@ function InnerPlayer() {
                   ? "Focus on the movement. Your screen can stay off."
                   : "Breathe. Recover before the next push."
                 : "Build a workout on the left to get started."
-            : current
-              ? workoutState.selectedIntervalId
-                ? `Start from ${current.type === "work" ? current.title || "Work" : "Rest"}`
-                : "Click Start to begin."
-              : "Build a workout on the left to get started."}
+            : player.isPaused
+              ? "Paused. Click Start to resume."
+              : current
+                ? workoutState.selectedIntervalId
+                  ? `Start from ${current.type === "work" ? current.title || "Work" : "Rest"}`
+                  : "Click Start to begin."
+                : "Build a workout on the left to get started."}
         </div>
       </div>
 
@@ -161,9 +165,10 @@ function InnerPlayer() {
         <button
           type="button"
           onClick={() => reset(workoutState.workout)}
-          className="cursor-pointer rounded-xl border-2 border-white/80 px-8 py-3.5 text-base font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/20 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+          className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-400/60 bg-zinc-200/90 px-8 py-3.5 text-base font-bold uppercase tracking-wider text-zinc-700 transition-colors hover:bg-zinc-300/90 dark:border-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-200 dark:hover:bg-zinc-600/80"
         >
-          Stop
+          <FaUndo className="h-4 w-4" />
+          Reset
         </button>
         <button
           type="button"
@@ -176,9 +181,30 @@ function InnerPlayer() {
                 }
           }
           disabled={playbackIntervals.length === 0}
-          className="cursor-pointer rounded-xl bg-white px-8 py-3.5 text-base font-bold uppercase tracking-wider text-primary-600 shadow-lg transition-all hover:bg-white/95 hover:shadow-xl disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-white/60 dark:bg-primary-500 dark:text-white dark:hover:bg-primary-400 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
+          aria-label={
+            player.isRunning
+              ? "Pause workout"
+              : player.isPaused
+                ? "Resume workout"
+                : "Start workout"
+          }
+          className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-base font-bold uppercase tracking-wider shadow-lg transition-all disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-white/60 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400 ${
+            player.isRunning
+              ? "bg-amber-500 text-white hover:bg-amber-400 shadow-xl dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500"
+              : "bg-white text-primary-600 hover:bg-white/95 hover:shadow-xl dark:bg-primary-500 dark:text-white dark:hover:bg-primary-400"
+          }`}
         >
-          {player.isRunning ? "Pause" : "Start"}
+          {player.isRunning ? (
+            <>
+              <FaPause className="h-4 w-4" />
+              Pause
+            </>
+          ) : (
+            <>
+              <FaPlay className="h-4 w-4" />
+              Start
+            </>
+          )}
         </button>
       </div>
     </div>

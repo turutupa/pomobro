@@ -17,6 +17,8 @@ function getPlaybackIntervals(workout: Workout) {
 
 interface PlayerState {
   isRunning: boolean;
+  /** True when paused (timer stopped but stay in playback UI). */
+  isPaused: boolean;
   currentIndex: number;
   /** 0-based set index. When sets is 1, always 0. */
   currentSetIndex: number;
@@ -47,6 +49,7 @@ function initialState(workout: Workout): PlayerState {
   const first = intervals[0];
   return {
     isRunning: false,
+    isPaused: false,
     currentIndex: intervals.length > 0 ? 0 : -1,
     currentSetIndex: 0,
     secondsRemainingInInterval: first?.durationSeconds ?? 0,
@@ -58,7 +61,7 @@ function initialState(workout: Workout): PlayerState {
 function reducer(state: PlayerState, action: Action): PlayerState {
   switch (action.type) {
     case "reset":
-      return initialState(action.workout);
+      return { ...initialState(action.workout), isPaused: false };
     case "play": {
       const intervals = getPlaybackIntervals(action.workout);
       if (intervals.length === 0) return state;
@@ -68,6 +71,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
           : state.currentIndex;
       const safeIdx = Math.max(0, Math.min(idx, intervals.length - 1));
       const target = intervals[safeIdx];
+      const isResuming = action.startIntervalId === undefined;
       const atFullDuration =
         (action.startIntervalId !== undefined ||
           (state.currentIndex === safeIdx &&
@@ -78,9 +82,16 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         ...state,
         currentIndex: safeIdx,
         currentSetIndex: action.startIntervalId !== undefined ? 0 : state.currentSetIndex,
-        secondsRemainingInInterval: target.durationSeconds,
-        preparationRemaining: atFullDuration ? prepCount : state.preparationRemaining,
+        secondsRemainingInInterval: isResuming
+          ? state.secondsRemainingInInterval
+          : target.durationSeconds,
+        preparationRemaining: isResuming
+          ? state.preparationRemaining
+          : atFullDuration
+            ? prepCount
+            : state.preparationRemaining,
         isRunning: true,
+        isPaused: false,
         startedAt: Date.now(),
       };
     }
@@ -88,6 +99,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       return {
         ...state,
         isRunning: false,
+        isPaused: true,
         startedAt: null,
         // Keep preparationRemaining so we can resume countdown
       };
@@ -105,6 +117,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         preparationRemaining: 0,
         startedAt: null,
         isRunning: false,
+        isPaused: false,
       };
     }
     case "tick": {
@@ -150,6 +163,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       return {
         ...state,
         isRunning: false,
+        isPaused: false,
         startedAt: null,
       };
     }
