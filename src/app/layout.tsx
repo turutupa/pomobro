@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Plus_Jakarta_Sans, Syne } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SettingsProvider } from "@/state/settings-context";
+import { PwaRegistration } from "@/components/PwaRegistration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
   },
   description:
     "Pomobro is a mobile-first, voice-guided interval timer for workouts and focus sessions, with shareable card-based routines.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
   },
@@ -68,9 +70,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${plusJakarta.variable} ${syne.variable} font-sans antialiased`}
       >
-        <ThemeProvider>
-          <SettingsProvider>{children}</SettingsProvider>
-        </ThemeProvider>
+<ThemeProvider>
+        <SettingsProvider>
+          <PwaRegistration />
+          {children}
+        </SettingsProvider>
+      </ThemeProvider>
       </body>
     </html>
   );
