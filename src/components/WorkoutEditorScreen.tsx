@@ -140,20 +140,18 @@ function MobilePlayerBar() {
     <div className="pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-4 pb-5 pt-12 md:hidden">
       <div className="pointer-events-auto flex w-full max-w-xs items-center justify-center gap-3 px-4">
         <div className="flex min-w-12 flex-1 items-center justify-start">
-          {isInPlaybackMode && (
-            <button
-              type="button"
-              onClick={toggleView}
-              aria-label={view === "cards" ? "Switch to timer view" : "Switch to cards view"}
-              className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-zinc-600 text-white transition-colors hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-            >
-              {view === "cards" ? (
-                <FaStopwatch className="h-5 w-5" />
-              ) : (
-                <FaThLarge className="h-5 w-5" />
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleView}
+            aria-label={view === "cards" ? "Switch to timer view" : "Switch to cards view"}
+            className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-zinc-600 text-white transition-colors hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            {view === "cards" ? (
+              <FaStopwatch className="h-5 w-5" />
+            ) : (
+              <FaThLarge className="h-5 w-5" />
+            )}
+          </button>
         </div>
         <button
           type="button"
