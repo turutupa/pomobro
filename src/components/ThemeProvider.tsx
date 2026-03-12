@@ -32,6 +32,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         : theme;
     root.classList.toggle("dark", resolvedTheme === "dark");
     setResolved(resolvedTheme);
+
+    // Sync theme-color meta for mobile browser chrome (address bar, status bar)
+    const color = resolvedTheme === "dark" ? "#0c0c0e" : "#f8fafc";
+    document.querySelectorAll('meta[name="theme-color"]').forEach((el) => el.remove());
+    const m = document.createElement("meta");
+    m.name = "theme-color";
+    m.content = color;
+    document.head.appendChild(m);
   }, [theme]);
 
   useEffect(() => {
@@ -41,6 +49,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const resolvedTheme = mq.matches ? "dark" : "light";
         document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
         setResolved(resolvedTheme);
+        const color = resolvedTheme === "dark" ? "#0c0c0e" : "#f8fafc";
+        document.querySelectorAll('meta[name="theme-color"]').forEach((el) => el.remove());
+        const m = document.createElement("meta");
+        m.name = "theme-color";
+        m.content = color;
+        document.head.appendChild(m);
       }
     };
     mq.addEventListener("change", handler);

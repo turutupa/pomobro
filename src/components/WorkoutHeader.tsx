@@ -46,6 +46,9 @@ export function WorkoutHeader() {
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <input
             type="text"
+            autoComplete="organization"
+            autoCorrect="on"
+            autoCapitalize="words"
             value={localName}
             onChange={(e) => setLocalName(e.target.value)}
             onBlur={() => updateMeta(localName)}

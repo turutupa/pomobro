@@ -81,6 +81,9 @@ export function DurationInput({
         onBlur={() => commit(local)}
         onKeyDown={(e) => e.key === "Enter" && commit(local)}
         onClick={(e) => e.stopPropagation()}
+        onFocus={(e) => {
+          e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+        }}
       />
       <span className={`text-sm font-medium md:text-base ${suffixClassName}`}>s</span>
     </div>

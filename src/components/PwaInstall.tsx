@@ -7,17 +7,25 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+// Persist across client-side navigations — beforeinstallprompt fires once per session
+let storedPrompt: BeforeInstallPromptEvent | null = null;
+
 export function usePwaInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => storedPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIos, setIsIos] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const ev = e as BeforeInstallPromptEvent;
+      storedPrompt = ev;
+      setDeferredPrompt(ev);
     };
     window.addEventListener("beforeinstallprompt", handler);
+
+    // Restore from store if we navigated back (event won't fire again)
+    if (storedPrompt) setDeferredPrompt(storedPrompt);
 
     // Check if already installed (standalone mode)
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
@@ -32,15 +40,19 @@ export function usePwaInstall() {
   }, []);
 
   const install = async () => {
-    if (!deferredPrompt) return false;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setDeferredPrompt(null);
+    const prompt = deferredPrompt ?? storedPrompt;
+    if (!prompt) return false;
+    await prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === "accepted") {
+      storedPrompt = null;
+      setDeferredPrompt(null);
+    }
     return outcome === "accepted";
   };
 
-  const canInstall = !!deferredPrompt && !isInstalled;
-  const showIosInstructions = isIos && !isInstalled && !deferredPrompt;
+  const canInstall = !!(deferredPrompt ?? storedPrompt) && !isInstalled;
+  const showIosInstructions = isIos && !isInstalled && !deferredPrompt && !storedPrompt;
 
   return { canInstall, showIosInstructions, isInstalled, install };
 }

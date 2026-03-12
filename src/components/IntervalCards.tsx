@@ -218,6 +218,10 @@ function WorkIntervalCard({
           <div className="min-w-0 flex-1">
             <input
               ref={titleInputRef}
+              type="text"
+              autoComplete="organization"
+              autoCorrect="on"
+              autoCapitalize="words"
               className={`font-display w-full rounded-md border-0 bg-transparent px-3 py-1 text-lg font-bold placeholder:opacity-70 focus:outline-none focus:ring-2 focus:ring-white/50 ${textClass}`}
               value={interval.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
