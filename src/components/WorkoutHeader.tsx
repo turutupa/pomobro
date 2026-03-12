@@ -21,7 +21,7 @@ export function WorkoutHeader() {
       ? ""
       : (() => {
           const encoded = encodeWorkout(state.workout);
-          const url = new URL(window.location.href);
+          const url = new URL("/", window.location.origin);
           url.searchParams.set("data", encoded);
           return url.toString();
         })();
@@ -60,14 +60,14 @@ export function WorkoutHeader() {
                 (e.target as HTMLInputElement).blur();
               }
             }}
-            className="font-display min-w-0 flex-1 rounded-lg border-0 bg-transparent px-3 py-1.5 text-lg font-semibold text-zinc-800 outline-none focus:ring-2 focus:ring-sky-400/50 dark:text-zinc-200"
+            className="font-display min-w-0 flex-1 rounded-lg border-0 bg-transparent px-3 py-1.5 text-lg font-semibold text-zinc-950 outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-zinc-200"
             placeholder="Workout name"
           />
           <div className="relative">
             <button
               type="button"
               onClick={() => setShareOpen((o) => !o)}
-              className="cursor-pointer rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              className="cursor-pointer rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-200 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
               aria-label="Share"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@ export function WorkoutHeader() {
                   onClick={() => setShareOpen(false)}
                   aria-hidden
                 />
-                <div className="absolute right-0 top-full z-20 mt-2 flex min-w-[160px] flex-col gap-0.5 rounded-xl border border-zinc-200 bg-white py-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+                <div className="absolute right-0 top-full z-20 mt-2 flex min-w-[160px] flex-col gap-0.5 rounded-xl border border-zinc-300 bg-zinc-100 py-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
                   <button
                     type="button"
                     onClick={copyUrl}
@@ -112,19 +112,19 @@ export function WorkoutHeader() {
           onClick={() => setQrOpen(false)}
         >
           <div
-            className="rounded-2xl bg-white p-6 dark:bg-zinc-900"
+            className="rounded-2xl bg-zinc-100 p-6 dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-3 text-center text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <div className="mb-3 text-center text-sm font-semibold text-zinc-800 dark:text-zinc-300">
               Scan to load workout
             </div>
-            <div className="flex justify-center rounded-xl bg-white p-4 dark:bg-zinc-800">
+            <div className="flex justify-center rounded-xl bg-zinc-100 p-4 dark:bg-zinc-800">
               <QRCodeSVG value={shareUrl} size={200} level="M" />
             </div>
             <button
               type="button"
               onClick={() => setQrOpen(false)}
-              className="mt-4 w-full cursor-pointer rounded-lg bg-zinc-200 py-2 text-sm font-medium text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+              className="mt-4 w-full cursor-pointer rounded-lg bg-primary-600 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-500 dark:bg-primary-500 dark:hover:bg-primary-400"
             >
               Close
             </button>

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePlayer } from "@/state/player-context";
 import { useWorkout } from "@/state/workout-context";
 import { getVoiceEngine } from "./VoiceEngine";
-import { WorkInterval, RestInterval } from "@/domain/workout";
+import { WorkInterval, RestInterval, expandIntervals } from "@/domain/workout";
 import { getVoiceVolume } from "@/state/settings-context";
 
 const NATURAL_OPTIONS = { rate: 0.88, pitch: 1 };
@@ -30,7 +30,7 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     const engine = getVoiceEngine();
     const voiceVolume = getVoiceVolume();
     const speakOptions = { ...NATURAL_OPTIONS, volume: voiceVolume };
-    const intervals = workoutState.workout.intervals;
+    const intervals = expandIntervals(workoutState.workout.intervals);
     const current = intervals[player.currentIndex];
     const muted = current && isMuted(current);
 

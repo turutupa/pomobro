@@ -97,11 +97,11 @@ export function DurationInput({
 
   useEffect(() => () => clearRepeat(), []);
 
-  const buttonClass = `flex min-h-[48px] min-w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-xl text-xl font-medium transition-colors hover:opacity-80 active:opacity-60 touch-manipulation select-none ${suffixClassName}`;
+  const buttonClass = `flex min-h-[52px] min-w-[52px] shrink-0 cursor-pointer items-center justify-center rounded-xl text-2xl font-semibold transition-colors hover:opacity-90 active:opacity-70 touch-manipulation select-none bg-white/25 ${suffixClassName}`;
 
   return (
     <div
-      className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 ${containerClassName}`}
+      className={`flex w-full items-center justify-center gap-3 rounded-lg py-2.5 ${containerClassName}`}
       onClick={(e) => e.stopPropagation()}
     >
       <span className="flex-1 min-w-0" aria-hidden />
@@ -121,7 +121,7 @@ export function DurationInput({
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
-        className={`min-w-[2.75rem] w-12 rounded bg-transparent px-2 text-right text-base font-semibold focus:outline-none md:min-w-[3rem] md:w-14 md:text-lg ${inputClassName}`}
+        className={`min-h-[52px] min-w-[4rem] max-w-[5rem] w-auto rounded-xl bg-white/25 px-4 text-right text-2xl font-semibold focus:outline-none ${inputClassName}`}
         value={local}
         onChange={(e) => {
           const v = e.target.value.replace(/\D/g, "");

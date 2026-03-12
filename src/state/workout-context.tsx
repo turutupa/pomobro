@@ -8,6 +8,7 @@ import {
   addWorkIntervalAfter,
   addRestAfter,
   addRestBetween,
+  addLooperAfter as addLooperAfterDomain,
   deleteInterval as deleteIntervalDomain,
   moveInterval as moveIntervalDomain,
   normalizeWorkout,
@@ -26,6 +27,7 @@ type Action =
   | { type: "clearLastAddedIntervalId" }
   | { type: "addRestAfter"; afterId: string }
   | { type: "addRestBetween"; beforeId: string }
+  | { type: "addLooperAfter"; afterId: string }
   | { type: "deleteInterval"; id: string }
   | { type: "moveInterval"; id: string; newIndex: number }
   | { type: "updateInterval"; id: string; patch: Partial<Interval> }
@@ -65,6 +67,10 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
     }
     case "addRestBetween": {
       const workout = addRestBetween(state.workout, action.beforeId);
+      return { ...state, workout };
+    }
+    case "addLooperAfter": {
+      const workout = addLooperAfterDomain(state.workout, action.afterId);
       return { ...state, workout };
     }
     case "deleteInterval": {
@@ -153,6 +159,8 @@ export function useWorkout() {
       dispatch({ type: "addRestAfter", afterId }),
     addRestBetween: (beforeId: string) =>
       dispatch({ type: "addRestBetween", beforeId }),
+    addLooperAfter: (afterId: string) =>
+      dispatch({ type: "addLooperAfter", afterId }),
     deleteInterval: (id: string) =>
       dispatch({ type: "deleteInterval", id }),
     moveInterval: (id: string, newIndex: number) =>

@@ -5,12 +5,13 @@ import { createPortal } from "react-dom";
 import { useWorkout } from "@/state/workout-context";
 import { usePlayer } from "@/state/player-context";
 import { usePrepEnabled } from "@/state/prep-enabled-context";
-import { Interval, WorkInterval, RestInterval, type BeepSoundType } from "@/domain/workout";
+import { Interval, WorkInterval, RestInterval, LooperInterval, expandIntervals, getLooperProgressAtExpandedIndex, getStartIntervalIdForPlayback, type BeepSoundType } from "@/domain/workout";
+import { resumeAudioContext } from "@/voice/BeepEngine";
 import { DurationInput } from "./DurationInput";
 
 const PRESET_COLORS = [
   "#0d9488", // teal
-  "#14b8a6", // teal-500
+  "#00BD7C", // primary
   "#0891b2", // cyan-600
   "#6366f1", // indigo-500
   "#7c3aed", // violet-600
@@ -26,6 +27,35 @@ const PRESET_COLORS = [
 const DEFAULT_WORK_COLOR = "#0ea5e9";
 const DEFAULT_REST_COLOR = "#475569";
 
+const LOOPER_COLORS = [
+  "#d97706", // amber-600
+  "#6366f1", // indigo-500
+  "#059669", // emerald-600
+  "#dc2626", // red-600
+  "#2563eb", // blue-600
+  "#7c3aed", // violet-600
+] as const;
+
+/** Returns the assigned color for a looper (by order: 1st=amber, 2nd=indigo, etc.). */
+function getLooperColor(looperId: string, intervals: Interval[]): string {
+  const loopers = intervals.filter((x): x is LooperInterval => x.type === "looper");
+  const idx = loopers.findIndex((l) => l.id === looperId);
+  return LOOPER_COLORS[Math.max(0, idx) % LOOPER_COLORS.length];
+}
+
+/** Returns the 1px border color for a work/rest card if it's in a looper's block. */
+function getLooperBorderColor(intervalId: string, intervals: Interval[]): string | undefined {
+  const idx = intervals.findIndex((i) => i.id === intervalId);
+  if (idx === -1) return undefined;
+  // Find the next looper after this interval
+  for (let i = idx + 1; i < intervals.length; i++) {
+    if (intervals[i].type === "looper") {
+      return getLooperColor(intervals[i].id, intervals);
+    }
+  }
+  return undefined;
+}
+
 function getLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -37,11 +67,15 @@ function isWork(interval: Interval): interval is WorkInterval {
   return interval.type === "work";
 }
 
+function isLooper(interval: Interval): interval is LooperInterval {
+  return interval.type === "looper";
+}
+
 function PrepEnabledRow() {
   const { prepEnabled, setPrepEnabled } = usePrepEnabled();
   return (
-    <div className="mb-3 flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-700/80 dark:bg-zinc-800/40">
-      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+    <div className="mb-3 flex items-center justify-between rounded-xl border border-zinc-300 bg-zinc-200 px-4 py-3 dark:border-zinc-700/80 dark:bg-zinc-800/40">
+      <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-400">
         Get ready countdown
       </span>
       <button
@@ -74,29 +108,34 @@ function SetsRow() {
   };
 
   return (
-    <div className="mt-4 flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-700/80 dark:bg-zinc-800/40">
-      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-        Sets
-      </span>
-      <div className="flex items-center gap-2">
+    <div className="mt-4 flex items-center justify-between rounded-xl border border-zinc-300 bg-zinc-200 px-4 py-3 dark:border-zinc-700/80 dark:bg-zinc-800/40">
+      <div className="min-w-0">
+        <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-400">
+          Repeat circuit
+        </span>
+        <p className="mt-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-400">
+          Runs the full routine this many times
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={() => setSets(sets - 1)}
           disabled={sets <= min}
-          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-200/80 text-zinc-600 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500"
-          aria-label="Decrease sets"
+          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-300 text-zinc-800 font-semibold transition-colors hover:bg-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500"
+          aria-label="Decrease repeat count"
         >
           −
         </button>
-        <span className="min-w-[2rem] text-center text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        <span className="min-w-[2rem] text-center text-sm font-bold text-zinc-900 dark:text-zinc-300">
           {sets}×
         </span>
         <button
           type="button"
           onClick={() => setSets(sets + 1)}
           disabled={sets >= max}
-          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-200/80 text-zinc-600 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500"
-          aria-label="Increase sets"
+          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-300 text-zinc-800 font-semibold transition-colors hover:bg-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500"
+          aria-label="Increase repeat count"
         >
           +
         </button>
@@ -160,7 +199,7 @@ function ColorPicker({
               aria-hidden
             />
             <div
-              className="fixed z-[101] flex flex-wrap gap-2 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+              className="fixed z-[101] flex flex-wrap gap-2 rounded-xl border border-zinc-300 bg-zinc-100 p-3 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
               style={{ top: position.top, left: position.left }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -190,7 +229,9 @@ interface WorkIntervalCardProps {
   isSelected: boolean;
   isCurrent: boolean;
   isPlaying: boolean;
+  looperBorderColor?: string;
   onSelect: () => void;
+  onPlayFromHere: () => void;
   onDelete: () => void;
   onUpdate: (patch: Partial<WorkInterval>) => void;
 }
@@ -200,7 +241,9 @@ function WorkIntervalCard({
   isSelected,
   isCurrent,
   isPlaying,
+  looperBorderColor,
   onSelect,
+  onPlayFromHere,
   onDelete,
   onUpdate,
 }: WorkIntervalCardProps) {
@@ -209,8 +252,8 @@ function WorkIntervalCard({
   const [expanded, setExpanded] = useState(false);
   const color = interval.color ?? DEFAULT_WORK_COLOR;
   const isLight = getLuminance(color) > 0.6;
-  const textClass = isLight ? "text-zinc-900" : "text-white";
-  const mutedClass = isLight ? "text-zinc-600" : "text-white/80";
+  const textClass = isLight ? "text-zinc-950" : "text-white";
+  const mutedClass = isLight ? "text-zinc-700" : "text-white/80";
 
   useEffect(() => {
     if (state.lastAddedIntervalId === interval.id) {
@@ -222,12 +265,20 @@ function WorkIntervalCard({
   if (isPlaying) {
     return (
       <div
-        className={`flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 ${
+        role="button"
+        tabIndex={0}
+        data-interactive
+        onClick={onSelect}
+        onKeyDown={(e) => e.key === "Enter" && onSelect()}
+        className={`flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 transition-opacity ${
           isCurrent
-            ? "border-teal-400 py-5 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
-            : "border-transparent py-3"
+            ? "border-zinc-400 py-5 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
+            : "border-transparent py-3 opacity-70"
         }`}
-        style={{ backgroundColor: color }}
+        style={{
+          backgroundColor: color,
+          ...(looperBorderColor && { outline: `1px solid ${looperBorderColor}`, outlineOffset: 2 }),
+        }}
       >
         <span
           className={`font-display truncate ${isCurrent ? "text-xl font-bold md:text-2xl" : "text-base font-semibold"} ${textClass}`}
@@ -235,7 +286,7 @@ function WorkIntervalCard({
           {interval.title || "Work"}
         </span>
         <span
-          className={`shrink-0 font-medium ${isCurrent ? "text-base md:text-lg" : "text-sm"} ${mutedClass}`}
+          className={`shrink-0 min-w-[2.5rem] max-w-[3.25rem] px-3 text-center font-medium ${isCurrent ? "text-base md:text-lg" : "text-sm"} ${isCurrent ? (isLight ? "text-zinc-950" : "text-white") : mutedClass}`}
         >
           {interval.durationSeconds}s
         </span>
@@ -252,11 +303,12 @@ function WorkIntervalCard({
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
       className={`group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 shadow-md transition-all duration-200 ${
         isSelected || isCurrent
-          ? "border-teal-400 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
+          ? "border-zinc-400 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
           : "border-transparent"
       }`}
       style={{
         backgroundColor: color,
+        ...(looperBorderColor && { outline: `1px solid ${looperBorderColor}`, outlineOffset: 2 }),
       }}
     >
       <div className="flex flex-col gap-1 px-4 py-3.5">
@@ -290,7 +342,15 @@ function WorkIntervalCard({
                       },
                     });
                   }}
-                  className={`cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-white/30 ${interval.voice?.mute ? "bg-white/15 text-white/60" : "bg-white/25 text-white"}`}
+                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    isLight
+                      ? interval.voice?.mute
+                        ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                        : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                      : interval.voice?.mute
+                        ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        : "bg-black/35 text-white hover:bg-black/45"
+                  }`}
                 >
                   Voice {interval.voice?.mute ? "Off" : "On"}
                 </button>
@@ -305,12 +365,20 @@ function WorkIntervalCard({
                       },
                     });
                   }}
-                  className={`cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-white/30 ${interval.voice?.beep ? "bg-white/25 text-white" : "bg-white/15 text-white/60"}`}
+                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    isLight
+                      ? interval.voice?.beep
+                        ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                        : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                      : interval.voice?.beep
+                        ? "bg-black/35 text-white hover:bg-black/45"
+                        : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                  }`}
                 >
                   Beep {interval.voice?.beep ? interval.voice.beepSound ?? "beep" : "Off"}
                 </button>
                 {interval.description && (
-                  <span className="max-w-[120px] truncate rounded-full px-2 py-0.5 text-[10px] text-white/80" title={interval.description}>
+                  <span className={`max-w-[120px] truncate rounded-full px-2.5 py-1 text-[10px] font-medium ${isLight ? "bg-zinc-600/40 text-zinc-800" : "bg-black/40 text-white/95"}`} title={interval.description}>
                     {interval.description}
                   </span>
                 )}
@@ -318,6 +386,19 @@ function WorkIntervalCard({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayFromHere();
+              }}
+              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-primary-500/30 ${mutedClass}`}
+              aria-label="Start from this interval"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -354,7 +435,7 @@ function WorkIntervalCard({
 
         {expanded && (
           <div
-            className="mt-3 flex flex-col gap-3 rounded-xl bg-white/15 p-3 backdrop-blur-sm"
+            className={`mt-3 flex flex-col gap-3 rounded-xl p-3 backdrop-blur-sm ${isLight ? "bg-zinc-900/10" : "bg-white/15"}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
@@ -376,10 +457,14 @@ function WorkIntervalCard({
                     },
                   })
                 }
-                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  interval.voice?.mute
-                    ? "bg-white/20 text-white/70"
-                    : "bg-white/30 text-white"
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  isLight
+                    ? interval.voice?.mute
+                      ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                      : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                    : interval.voice?.mute
+                      ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                      : "bg-black/35 text-white hover:bg-black/45"
                 }`}
               >
                 {interval.voice?.mute ? "Off" : "On"}
@@ -398,7 +483,7 @@ function WorkIntervalCard({
                       },
                     })
                   }
-                  className="cursor-pointer rounded-lg border-0 bg-white/20 px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className={`cursor-pointer rounded-lg border-0 px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-white/50 ${isLight ? "bg-zinc-700/35 text-zinc-900" : "bg-black/35 text-white"}`}
                 >
                   <option value="beep">Beep</option>
                   <option value="chime">Chime</option>
@@ -414,10 +499,14 @@ function WorkIntervalCard({
                       },
                     })
                   }
-                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    interval.voice?.beep
-                      ? "bg-white/30 text-white"
-                      : "bg-white/20 text-white/70"
+                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    isLight
+                      ? interval.voice?.beep
+                        ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                        : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                      : interval.voice?.beep
+                        ? "bg-black/35 text-white hover:bg-black/45"
+                        : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                   }`}
                 >
                   {interval.voice?.beep ? "On" : "Off"}
@@ -461,7 +550,9 @@ interface RestIntervalCardProps {
   isSelected: boolean;
   isCurrent: boolean;
   isPlaying: boolean;
+  looperBorderColor?: string;
   onSelect: () => void;
+  onPlayFromHere: () => void;
   onDelete: () => void;
   onUpdate: (patch: Partial<RestInterval>) => void;
 }
@@ -471,25 +562,35 @@ function RestIntervalCard({
   isSelected,
   isCurrent,
   isPlaying,
+  looperBorderColor,
   onSelect,
+  onPlayFromHere,
   onDelete,
   onUpdate,
 }: RestIntervalCardProps) {
   const [expanded, setExpanded] = useState(false);
   const color = interval.color ?? DEFAULT_REST_COLOR;
   const isLight = getLuminance(color) > 0.6;
-  const textClass = isLight ? "text-zinc-900" : "text-white";
-  const mutedClass = isLight ? "text-zinc-600" : "text-white/80";
+  const textClass = isLight ? "text-zinc-950" : "text-white";
+  const mutedClass = isLight ? "text-zinc-700" : "text-white/80";
 
   if (isPlaying) {
     return (
       <div
-        className={`flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 ${
+        role="button"
+        tabIndex={0}
+        data-interactive
+        onClick={onSelect}
+        onKeyDown={(e) => e.key === "Enter" && onSelect()}
+        className={`flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 transition-opacity ${
           isCurrent
-            ? "border-teal-400 py-5 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
-            : "border-transparent py-3"
+            ? "border-zinc-400 py-5 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
+            : "border-transparent py-3 opacity-70"
         }`}
-        style={{ backgroundColor: color }}
+        style={{
+          backgroundColor: color,
+          ...(looperBorderColor && { outline: `1px solid ${looperBorderColor}`, outlineOffset: 2 }),
+        }}
       >
         <span
           className={`font-display ${isCurrent ? "text-xl font-bold md:text-2xl" : "text-base font-semibold"} ${textClass}`}
@@ -497,7 +598,7 @@ function RestIntervalCard({
           Rest
         </span>
         <span
-          className={`shrink-0 font-medium ${isCurrent ? "text-base md:text-lg" : "text-sm"} ${mutedClass}`}
+          className={`shrink-0 min-w-[2.5rem] max-w-[3.25rem] px-3 text-center font-medium ${isCurrent ? "text-base md:text-lg" : "text-sm"} ${isCurrent ? (isLight ? "text-zinc-950" : "text-white") : mutedClass}`}
         >
           {interval.durationSeconds}s
         </span>
@@ -514,11 +615,12 @@ function RestIntervalCard({
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
       className={`group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 shadow-md transition-all duration-200 ${
         isSelected || isCurrent
-          ? "border-teal-400 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
+          ? "border-zinc-400 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
           : "border-transparent"
       }`}
       style={{
         backgroundColor: color,
+        ...(looperBorderColor && { outline: `1px solid ${looperBorderColor}`, outlineOffset: 2 }),
       }}
     >
       <div className="flex flex-col gap-1 px-4 py-3.5">
@@ -538,7 +640,15 @@ function RestIntervalCard({
                       },
                     });
                   }}
-                  className={`cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-white/30 ${interval.voice?.mute ? "bg-white/15 text-white/60" : "bg-white/25 text-white"}`}
+                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    isLight
+                      ? interval.voice?.mute
+                        ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                        : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                      : interval.voice?.mute
+                        ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        : "bg-black/35 text-white hover:bg-black/45"
+                  }`}
                 >
                   Voice {interval.voice?.mute ? "Off" : "On"}
                 </button>
@@ -548,7 +658,15 @@ function RestIntervalCard({
                     e.stopPropagation();
                     onUpdate({ beep: !interval.beep });
                   }}
-                  className={`cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-white/30 ${interval.beep ? "bg-white/25 text-white" : "bg-white/15 text-white/60"}`}
+                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    isLight
+? interval.beep
+                      ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                      : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                    : interval.beep
+                      ? "bg-black/35 text-white hover:bg-black/45"
+                      : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                  }`}
                 >
                   Beep {interval.beep ? interval.beepSound ?? "beep" : "Off"}
                 </button>
@@ -556,6 +674,19 @@ function RestIntervalCard({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayFromHere();
+              }}
+              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-primary-500/30 ${mutedClass}`}
+              aria-label="Start from this interval"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -592,7 +723,7 @@ function RestIntervalCard({
 
         {expanded && (
           <div
-            className="mt-3 flex flex-col gap-3 rounded-xl bg-white/15 p-3 backdrop-blur-sm"
+            className={`mt-3 flex flex-col gap-3 rounded-xl p-3 backdrop-blur-sm ${isLight ? "bg-zinc-900/10" : "bg-white/15"}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
@@ -614,10 +745,14 @@ function RestIntervalCard({
                     },
                   })
                 }
-                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  interval.voice?.mute
-                    ? "bg-white/20 text-white/70"
-                    : "bg-white/30 text-white"
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  isLight
+                    ? interval.voice?.mute
+                      ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                      : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                    : interval.voice?.mute
+                      ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                      : "bg-black/35 text-white hover:bg-black/45"
                 }`}
               >
                 {interval.voice?.mute ? "Off" : "On"}
@@ -631,7 +766,7 @@ function RestIntervalCard({
                   onChange={(e) =>
                     onUpdate({ beepSound: e.target.value as BeepSoundType })
                   }
-                  className="cursor-pointer rounded-lg border-0 bg-white/20 px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className={`cursor-pointer rounded-lg border-0 px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-white/50 ${isLight ? "bg-zinc-700/35 text-zinc-900" : "bg-black/35 text-white"}`}
                 >
                   <option value="beep">Beep</option>
                   <option value="chime">Chime</option>
@@ -640,10 +775,14 @@ function RestIntervalCard({
                 <button
                   type="button"
                   onClick={() => onUpdate({ beep: !interval.beep })}
-                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    interval.beep
-                      ? "bg-white/30 text-white"
-                      : "bg-white/20 text-white/70"
+                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    isLight
+? interval.beep
+                      ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                      : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                    : interval.beep
+                      ? "bg-black/35 text-white hover:bg-black/45"
+                      : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                   }`}
                 >
                   {interval.beep ? "On" : "Off"}
@@ -666,6 +805,181 @@ function RestIntervalCard({
   );
 }
 
+interface LooperIntervalCardProps {
+  interval: LooperInterval;
+  isSelected: boolean;
+  isCurrent: boolean;
+  isPlaying: boolean;
+  intervals: Interval[];
+  /** When playing: iteration progress for this looper (e.g. { iteration: 2, total: 3, remaining: 2 }) */
+  looperProgress?: { iteration: number; total: number; remaining: number };
+  onSelect: () => void;
+  onPlayFromHere: () => void;
+  onDelete: () => void;
+  onUpdate: (patch: Partial<LooperInterval>) => void;
+}
+
+function LooperIntervalCard({
+  interval,
+  isSelected,
+  isCurrent,
+  isPlaying,
+  intervals,
+  looperProgress,
+  onSelect,
+  onPlayFromHere,
+  onDelete,
+  onUpdate,
+}: LooperIntervalCardProps) {
+  const repeatCount = Math.max(2, interval.repeatCount);
+  const min = 2;
+  const max = 20;
+  const looperColor = getLooperColor(interval.id, intervals);
+
+  if (isPlaying) {
+    return (
+      <div
+        className="flex w-full items-center gap-2 py-2"
+        style={{ color: looperColor }}
+      >
+        <div className="h-px w-6 shrink-0" style={{ backgroundColor: looperColor }} />
+        <span className="font-display shrink-0 text-sm font-semibold">
+          Repeat
+        </span>
+        <div className="h-px flex-1" style={{ backgroundColor: looperColor }} />
+        {looperProgress ? (
+          <span className="shrink-0 text-sm font-medium">
+            {looperProgress.remaining} of {looperProgress.total} left
+          </span>
+        ) : (
+          <span className="shrink-0 text-sm font-medium opacity-70">—</span>
+        )}
+        <div className="h-px w-6 shrink-0" style={{ backgroundColor: looperColor }} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-interactive
+      onClick={onSelect}
+      onKeyDown={(e) => e.key === "Enter" && onSelect()}
+      className={`group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 shadow-md transition-all duration-200 ${
+        isSelected
+          ? "border-amber-400 md:ring-2 md:ring-amber-400 md:ring-offset-2 dark:border-amber-400 dark:md:ring-offset-zinc-950"
+          : "border-transparent"
+      }`}
+      style={{ backgroundColor: looperColor }}
+    >
+      <div className="flex flex-col gap-1 px-4 py-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-display px-3 py-1 text-lg font-bold text-white">
+              Repeat
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayFromHere();
+              }}
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-primary-500/30 text-white/90"
+              aria-label="Start from this interval"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdate({ repeatCount: Math.max(min, repeatCount - 1) });
+              }}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/20 text-white transition-colors hover:bg-white/30"
+              aria-label="Decrease repeat count"
+            >
+              −
+            </button>
+            <span className="min-w-[2rem] text-center text-sm font-semibold text-white">
+              {repeatCount}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdate({ repeatCount: Math.min(max, repeatCount + 1) });
+              }}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/20 text-white transition-colors hover:bg-white/30"
+              aria-label="Increase repeat count"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-red-500/30 text-white/80"
+              aria-label="Delete"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <p className="px-3 text-xs text-white/80">
+          Repeats everything after the previous looper (or start) this many times
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AddButtonWithPopover({
+  onClick,
+  className,
+  icon,
+  label,
+}: {
+  onClick: () => void;
+  className: string;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  const [showPopover, setShowPopover] = useState(false);
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setShowPopover(true)}
+      onMouseLeave={() => setShowPopover(false)}
+      onFocus={() => setShowPopover(true)}
+      onBlur={() => setShowPopover(false)}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        className={className}
+        aria-label={label}
+      >
+        {icon}
+      </button>
+      {showPopover && (
+        <div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-zinc-700">
+          {label}
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-zinc-800 dark:border-t-zinc-700" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Connector({
   aboveId,
   belowId,
@@ -673,37 +987,50 @@ function Connector({
   aboveId: string;
   belowId?: string | null;
 }) {
-  const { state, addWorkAfter, addRestAfter, addRestBetween } = useWorkout();
+  const { state, addWorkAfter, addRestAfter, addRestBetween, addLooperAfter } = useWorkout();
   const above = state.workout.intervals.find((i) => i.id === aboveId);
   const below = belowId ? state.workout.intervals.find((i) => i.id === belowId) : null;
   const canAddRest = above && isWork(above) && (!below || isWork(below));
+  const canAddLooper = above && !isLooper(above);
 
   return (
     <div className="flex justify-center py-3">
       <div className="flex gap-2">
-        <button
-          type="button"
+        <AddButtonWithPopover
           onClick={() => addWorkAfter(aboveId)}
           className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600 shadow-sm transition-all hover:scale-105 hover:bg-sky-100 hover:shadow-md dark:bg-sky-950/50 dark:text-sky-400 dark:hover:bg-sky-900/50"
-          aria-label="Add work interval"
-        >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-          </svg>
-        </button>
+          icon={
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+            </svg>
+          }
+          label="Workout"
+        />
         {canAddRest && (
-          <button
-            type="button"
+          <AddButtonWithPopover
             onClick={() =>
               belowId && below && isWork(below) ? addRestBetween(belowId) : addRestAfter(aboveId)
             }
             className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600 shadow-sm transition-all hover:scale-105 hover:bg-violet-100 hover:shadow-md dark:bg-violet-950/50 dark:text-violet-400 dark:hover:bg-violet-900/50"
-            aria-label="Add rest"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-            </svg>
-          </button>
+            icon={
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+            }
+            label="Rest"
+          />
+        )}
+        {canAddLooper && (
+          <AddButtonWithPopover
+            onClick={() => addLooperAfter(aboveId)}
+            className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 shadow-sm transition-all hover:scale-105 hover:bg-amber-100 hover:shadow-md dark:bg-amber-950/50 dark:text-amber-400 dark:hover:bg-amber-900/50"
+            icon={
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
+            label="Looper"
+          />
         )}
       </div>
     </div>
@@ -718,18 +1045,24 @@ export function IntervalEditorList() {
     addWorkAfter,
     updateInterval,
   } = useWorkout();
-  const { state: player } = usePlayer();
+  const { state: player, play } = usePlayer();
   const { intervals } = state.workout;
+  const sets = Math.max(1, state.workout.sets ?? 1);
+  const playbackIntervals = expandIntervals(intervals);
+  const currentPlaybackInterval = playbackIntervals[player.currentIndex] ?? null;
+  const looperProgressMap = player.isRunning
+    ? getLooperProgressAtExpandedIndex(intervals, player.currentIndex)
+    : new Map<string, { iteration: number; total: number; remaining: number }>();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!player.isRunning) return;
     if (window.innerWidth >= 768) return;
-    const current = intervals[player.currentIndex];
+    const current = currentPlaybackInterval;
     if (!current) return;
     const el = document.getElementById(`interval-${current.id}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [player.currentIndex, player.isRunning, intervals]);
+  }, [player.currentIndex, player.isRunning, currentPlaybackInterval]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -743,14 +1076,14 @@ export function IntervalEditorList() {
 
   if (intervals.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-8 text-center md:gap-5 md:rounded-2xl md:border-2 md:border-dashed md:border-zinc-300 md:bg-zinc-50/80 md:px-6 md:py-12 dark:md:border-zinc-700 dark:md:bg-zinc-900/50">
-        <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+      <div className="flex flex-col items-center justify-center gap-4 py-8 text-center md:gap-5 md:rounded-2xl md:border-2 md:border-dashed md:border-zinc-300 md:bg-zinc-200 md:px-6 md:py-12 dark:md:border-zinc-700 dark:md:bg-zinc-900/50">
+        <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-400">
           Start your first workout interval
         </p>
         <button
           type="button"
           onClick={() => addWorkAfter(null)}
-          className="cursor-pointer rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="cursor-pointer rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-primary-500 dark:bg-primary-500 dark:text-white dark:hover:bg-primary-400"
         >
           + Add work interval
         </button>
@@ -758,12 +1091,30 @@ export function IntervalEditorList() {
     );
   }
 
+  const handleCardSelect = (intervalId: string) => {
+    if (player.isRunning) {
+      const startId = getStartIntervalIdForPlayback(intervals, intervalId);
+      if (startId) play(state.workout, startId);
+    } else {
+      selectInterval(intervalId);
+    }
+  };
+
+  const handlePlayFromCard = async (intervalId: string) => {
+    await resumeAudioContext();
+    const startId = getStartIntervalIdForPlayback(intervals, intervalId);
+    if (startId) play(state.workout, startId);
+  };
+
   return (
     <div className={`flex flex-col ${player.isRunning ? "gap-2.5" : "gap-1"}`}>
       {!player.isRunning && <PrepEnabledRow />}
       {intervals.map((interval, index) => {
         const isSelected = state.selectedIntervalId === interval.id;
-        const isCurrent = player.isRunning && index === player.currentIndex;
+        const isCurrent =
+          player.isRunning &&
+          (interval.type === "work" || interval.type === "rest") &&
+          currentPlaybackInterval?.id === interval.id;
 
         return (
           <div
@@ -777,7 +1128,22 @@ export function IntervalEditorList() {
                 isSelected={isSelected}
                 isCurrent={isCurrent}
                 isPlaying={player.isRunning}
-                onSelect={() => selectInterval(interval.id)}
+                looperBorderColor={getLooperBorderColor(interval.id, intervals)}
+                onSelect={() => handleCardSelect(interval.id)}
+                onPlayFromHere={() => handlePlayFromCard(interval.id)}
+                onDelete={() => deleteInterval(interval.id)}
+                onUpdate={(p) => updateInterval(interval.id, p)}
+              />
+            ) : isLooper(interval) ? (
+              <LooperIntervalCard
+                interval={interval}
+                isSelected={isSelected}
+                isCurrent={isCurrent}
+                isPlaying={player.isRunning}
+                intervals={intervals}
+                looperProgress={looperProgressMap.get(interval.id)}
+                onSelect={() => handleCardSelect(interval.id)}
+                onPlayFromHere={() => handlePlayFromCard(interval.id)}
                 onDelete={() => deleteInterval(interval.id)}
                 onUpdate={(p) => updateInterval(interval.id, p)}
               />
@@ -787,7 +1153,9 @@ export function IntervalEditorList() {
                 isSelected={isSelected}
                 isCurrent={isCurrent}
                 isPlaying={player.isRunning}
-                onSelect={() => selectInterval(interval.id)}
+                looperBorderColor={getLooperBorderColor(interval.id, intervals)}
+                onSelect={() => handleCardSelect(interval.id)}
+                onPlayFromHere={() => handlePlayFromCard(interval.id)}
                 onDelete={() => deleteInterval(interval.id)}
                 onUpdate={(p) => updateInterval(interval.id, p)}
               />
@@ -804,6 +1172,18 @@ export function IntervalEditorList() {
           </div>
         );
       })}
+      {player.isRunning && sets > 1 && (
+        <div className="rounded-xl border border-zinc-300 bg-zinc-200/80 px-4 py-2.5 dark:border-zinc-600 dark:bg-zinc-800/80">
+          <div className="flex w-full items-center justify-between gap-3">
+            <span className="font-display text-sm font-semibold text-zinc-700 dark:text-zinc-400">
+              Circuit
+            </span>
+            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-500">
+              {sets - player.currentSetIndex} of {sets} left
+            </span>
+          </div>
+        </div>
+      )}
       {!player.isRunning && <SetsRow />}
     </div>
   );

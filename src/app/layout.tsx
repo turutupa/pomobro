@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Plus_Jakarta_Sans, Syne } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SettingsProvider } from "@/state/settings-context";
+import { WorkoutsProvider } from "@/state/workouts-context";
 import { PwaRegistration } from "@/components/PwaRegistration";
 
 const geistSans = Geist({
@@ -72,8 +73,10 @@ export default function RootLayout({
       >
 <ThemeProvider>
         <SettingsProvider>
-          <PwaRegistration />
-          {children}
+          <WorkoutsProvider>
+            <PwaRegistration />
+            {children}
+          </WorkoutsProvider>
         </SettingsProvider>
       </ThemeProvider>
       </body>

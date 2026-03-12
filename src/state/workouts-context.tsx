@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useLayoutEffect, useState } from "react";
 import type { Workout } from "@/domain/workout";
 import { createEmptyWorkout, normalizeWorkout } from "@/domain/workout";
+import { useSettings } from "@/state/settings-context";
 import { decodeWorkout } from "@/domain/share";
 import {
   loadWorkouts,
@@ -24,7 +25,9 @@ type WorkoutsAction =
   | { type: "update"; id: string; patch: Partial<Workout> }
   | { type: "delete"; id: string }
   | { type: "import"; workout: Workout }
-  | { type: "import_bundle"; workouts: Workout[] };
+  | { type: "import_bundle"; workouts: Workout[] }
+  | { type: "import_bundle_done"; workouts: Workout[]; currentId: string }
+  | { type: "reorder"; id: string; direction: "up" | "down" };
 
 const WorkoutsContext = createContext<
   | {
@@ -35,8 +38,9 @@ const WorkoutsContext = createContext<
       addWorkout: () => Workout;
       updateCurrentWorkout: (patch: Partial<Workout>) => void;
       deleteWorkout: (id: string) => void;
-      importWorkout: (workout: Workout) => void;
-      importWorkouts: (workouts: Workout[]) => void;
+      reorderWorkout: (id: string, direction: "up" | "down") => void;
+      importWorkout: (workout: Workout) => Workout;
+      importWorkouts: (workouts: Workout[]) => Workout | null;
     }
   | undefined
 >(undefined);
@@ -93,19 +97,34 @@ function reducer(state: WorkoutsState, action: WorkoutsAction): WorkoutsState {
       const next = dedupeById(loadWorkouts().map((x) => normalizeWorkout(x)));
       return { workouts: next, currentId: lastId ?? state.currentId };
     }
+    case "import_bundle_done":
+      return { workouts: action.workouts, currentId: action.currentId };
+    case "reorder": {
+      const idx = state.workouts.findIndex((w) => w.id === action.id);
+      if (idx === -1) return state;
+      const swapIdx = action.direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= state.workouts.length) return state;
+      const next = [...state.workouts];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      saveWorkouts(next);
+      return { ...state, workouts: next };
+    }
     default:
       return state;
   }
 }
 
 export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
+  const { voiceEnabledByDefault, beepEnabledByDefault } = useSettings();
   const [state, dispatch] = React.useReducer(reducer, {
     workouts: [],
     currentId: null,
   });
+  const [isLoaded, setIsLoaded] = React.useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     dispatch({ type: "load" });
+    setIsLoaded(true);
   }, []);
 
   const currentWorkout = state.workouts.find((w) => w.id === state.currentId) ?? null;
@@ -115,10 +134,15 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addWorkout = useCallback(() => {
-    const workout = createEmptyWorkout();
+    const workout = createEmptyWorkout({
+      defaults: {
+        voiceEnabledByDefault,
+        beepEnabledByDefault,
+      },
+    });
     dispatch({ type: "add", workout });
     return workout;
-  }, []);
+  }, [voiceEnabledByDefault, beepEnabledByDefault]);
 
   const updateCurrentWorkout = useCallback(
     (patch: Partial<Workout>) => {
@@ -133,14 +157,30 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "delete", id });
   }, []);
 
+  const reorderWorkout = useCallback((id: string, direction: "up" | "down") => {
+    dispatch({ type: "reorder", id, direction });
+  }, []);
+
   const importWorkout = useCallback((workout: Workout) => {
-    dispatch({ type: "import", workout: { ...workout, id: crypto.randomUUID() } });
+    const normalized = normalizeWorkout({ ...workout, id: crypto.randomUUID() });
+    dispatch({ type: "import", workout: normalized });
+    return normalized;
   }, []);
 
   const importWorkouts = useCallback((workouts: Workout[]) => {
     if (workouts.length > 0) {
-      dispatch({ type: "import_bundle", workouts });
+      const normalized: Workout[] = [];
+      for (const w of workouts) {
+        const n = normalizeWorkout({ ...w, id: crypto.randomUUID() });
+        normalized.push(n);
+        addWorkoutStorage(n);
+      }
+      const next = dedupeById(loadWorkouts().map((x) => normalizeWorkout(x)));
+      const last = normalized[normalized.length - 1];
+      dispatch({ type: "import_bundle_done", workouts: next, currentId: last.id });
+      return last;
     }
+    return null;
   }, []);
 
   const value = React.useMemo(
@@ -152,6 +192,7 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       addWorkout,
       updateCurrentWorkout,
       deleteWorkout,
+      reorderWorkout,
       importWorkout,
       importWorkouts,
     }),
@@ -163,10 +204,20 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       addWorkout,
       updateCurrentWorkout,
       deleteWorkout,
+      reorderWorkout,
       importWorkout,
       importWorkouts,
     ]
   );
+
+  if (!isLoaded) {
+    return (
+      <div
+        className="app-loading-screen min-h-screen w-full"
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <WorkoutsContext.Provider value={value}>

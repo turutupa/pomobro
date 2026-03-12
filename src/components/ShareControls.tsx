@@ -13,7 +13,7 @@ export function ShareControls() {
       ? ""
       : (() => {
           const encoded = encodeWorkout(state.workout);
-          const url = new URL(window.location.href);
+          const url = new URL("/", window.location.origin);
           url.searchParams.set("data", encoded);
           return url.toString();
         })();
@@ -32,7 +32,7 @@ export function ShareControls() {
   }
 
   return (
-    <div className="mt-5 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-700 dark:bg-zinc-800/30">
+    <div className="mt-5 flex flex-col gap-2 rounded-xl border border-zinc-300 bg-zinc-200 p-3 dark:border-zinc-700 dark:bg-zinc-800/30">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
           Share workout
@@ -40,7 +40,7 @@ export function ShareControls() {
         <button
           type="button"
           onClick={copy}
-          className="cursor-pointer rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-700"
+          className="cursor-pointer rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition-colors hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-700"
         >
           {copied ? "Copied" : "Copy link"}
         </button>

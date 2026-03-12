@@ -75,7 +75,7 @@ export function QRImportModal({ onImport, onImportWorkouts, onClose }: QRImportM
       aria-labelledby="qr-import-title"
     >
       <div
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-300 bg-zinc-100 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="qr-import-title" className="font-display border-b border-zinc-200 px-5 py-4 text-lg font-semibold text-zinc-900 dark:border-zinc-700 dark:text-zinc-100">

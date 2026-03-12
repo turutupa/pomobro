@@ -8,8 +8,12 @@ import React, {
   useReducer,
   useRef,
 } from "react";
-import { Workout } from "@/domain/workout";
+import { Workout, expandIntervals } from "@/domain/workout";
 import { usePrepEnabled } from "@/state/prep-enabled-context";
+
+function getPlaybackIntervals(workout: Workout) {
+  return expandIntervals(workout.intervals);
+}
 
 interface PlayerState {
   isRunning: boolean;
@@ -24,7 +28,7 @@ interface PlayerState {
 
 type Action =
   | { type: "reset"; workout: Workout }
-  | { type: "play"; workout: Workout; startIndex?: number; prepEnabled?: boolean }
+  | { type: "play"; workout: Workout; startIntervalId?: string; prepEnabled?: boolean }
   | { type: "pause" }
   | { type: "tick"; workout: Workout }
   | { type: "jumpTo"; index: number; workout: Workout };
@@ -39,12 +43,13 @@ const PlayerContext = createContext<
 >(undefined);
 
 function initialState(workout: Workout): PlayerState {
+  const intervals = getPlaybackIntervals(workout);
+  const first = intervals[0];
   return {
     isRunning: false,
-    currentIndex: workout.intervals.length > 0 ? 0 : -1,
+    currentIndex: intervals.length > 0 ? 0 : -1,
     currentSetIndex: 0,
-    secondsRemainingInInterval:
-      workout.intervals[0]?.durationSeconds ?? 0,
+    secondsRemainingInInterval: first?.durationSeconds ?? 0,
     preparationRemaining: 0,
     startedAt: null,
   };
@@ -55,13 +60,16 @@ function reducer(state: PlayerState, action: Action): PlayerState {
     case "reset":
       return initialState(action.workout);
     case "play": {
-      const intervals = action.workout.intervals;
+      const intervals = getPlaybackIntervals(action.workout);
       if (intervals.length === 0) return state;
-      const idx = action.startIndex ?? state.currentIndex;
+      const idx =
+        action.startIntervalId !== undefined
+          ? Math.max(0, intervals.findIndex((i) => i.id === action.startIntervalId))
+          : state.currentIndex;
       const safeIdx = Math.max(0, Math.min(idx, intervals.length - 1));
       const target = intervals[safeIdx];
       const atFullDuration =
-        (action.startIndex !== undefined ||
+        (action.startIntervalId !== undefined ||
           (state.currentIndex === safeIdx &&
             state.secondsRemainingInInterval === target.durationSeconds)) &&
         state.preparationRemaining === 0;
@@ -69,7 +77,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       return {
         ...state,
         currentIndex: safeIdx,
-        currentSetIndex: action.startIndex !== undefined ? 0 : state.currentSetIndex,
+        currentSetIndex: action.startIntervalId !== undefined ? 0 : state.currentSetIndex,
         secondsRemainingInInterval: target.durationSeconds,
         preparationRemaining: atFullDuration ? prepCount : state.preparationRemaining,
         isRunning: true,
@@ -83,11 +91,9 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         startedAt: null,
         // Keep preparationRemaining so we can resume countdown
       };
-    case "jumpTo":
-      if (
-        action.index < 0 ||
-        action.index >= action.workout.intervals.length
-      ) {
+    case "jumpTo": {
+      const intervals = getPlaybackIntervals(action.workout);
+      if (action.index < 0 || action.index >= intervals.length) {
         return state;
       }
       return {
@@ -95,11 +101,12 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         currentIndex: action.index,
         currentSetIndex: 0,
         secondsRemainingInInterval:
-          action.workout.intervals[action.index].durationSeconds,
+          intervals[action.index].durationSeconds,
         preparationRemaining: 0,
         startedAt: null,
         isRunning: false,
       };
+    }
     case "tick": {
       if (!state.isRunning) return state;
       // During preparation countdown, don't decrement interval time
@@ -118,7 +125,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       }
       // interval finished - advance to next
       const nextIndex = state.currentIndex + 1;
-      const intervals = action.workout.intervals;
+      const intervals = getPlaybackIntervals(action.workout);
       const sets = Math.max(1, action.workout.sets ?? 1);
       if (nextIndex < intervals.length) {
         const next = intervals[nextIndex];
@@ -171,8 +178,10 @@ export function PlayerProvider({
     return () => clearInterval(id);
   }, [state.isRunning]);
 
-  // Reset only when interval structure changes (add/remove), not on title/duration edits
-  const intervalIds = workout.intervals.map((i) => i.id).join(",");
+  // Reset only when interval structure changes (add/remove/looper), not on title/duration edits
+  const intervalIds = workout.intervals
+    .map((i) => (i.type === "looper" ? `${i.id}:${i.repeatCount}` : i.id))
+    .join(",");
   useEffect(() => {
     dispatch({ type: "reset", workout });
   }, [intervalIds]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -196,8 +205,8 @@ export function usePlayer() {
   const prepEnabled = ctx.prepEnabled ?? true;
 
   const controls = {
-    play: (workout: Workout, startIndex?: number) =>
-      dispatch({ type: "play", workout, startIndex, prepEnabled }),
+    play: (workout: Workout, startIntervalId?: string) =>
+      dispatch({ type: "play", workout, startIntervalId, prepEnabled }),
     pause: () => dispatch({ type: "pause" }),
     reset: (workout: Workout) => dispatch({ type: "reset", workout }),
     jumpTo: (index: number, workout: Workout) =>

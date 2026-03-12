@@ -4,13 +4,14 @@ import { useEffect, useRef } from "react";
 import { usePlayer } from "@/state/player-context";
 import { useWorkout } from "@/state/workout-context";
 import { playBeep, playLongBeep, playWorkoutCompleteBeeps } from "./BeepEngine";
-import type { BeepSoundType, Interval, WorkInterval } from "@/domain/workout";
+import { expandIntervals } from "@/domain/workout";
+import type { BeepSoundType, WorkInterval, RestInterval } from "@/domain/workout";
 
-function isWork(interval: Interval): interval is WorkInterval {
+function isWork(interval: WorkInterval | RestInterval): interval is WorkInterval {
   return interval.type === "work";
 }
 
-function getBeepSettings(interval: Interval): { enabled: boolean; sound: BeepSoundType } {
+function getBeepSettings(interval: WorkInterval | RestInterval): { enabled: boolean; sound: BeepSoundType } {
   const sound: BeepSoundType = (isWork(interval) ? interval.voice?.beepSound : interval.beepSound) ?? "beep";
   const enabled = isWork(interval) ? interval.voice?.beep : interval.beep;
   return { enabled: !!enabled, sound };
@@ -23,7 +24,7 @@ export function PlaybackBeepController() {
   const lastPlayedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const intervals = workoutState.workout.intervals;
+    const intervals = expandIntervals(workoutState.workout.intervals);
     const current = intervals[player.currentIndex] ?? null;
     const { remaining, index, running, prepRemaining } = prevRef.current;
     const rem = player.secondsRemainingInInterval;

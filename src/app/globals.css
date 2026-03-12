@@ -3,13 +3,26 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #fafafa;
+  --background: #eae6e6;
   --foreground: #18181b;
-  --card: #ffffff;
-  --card-border: #e4e4e7;
-  --muted: #71717a;
-  --accent: #0d9488;
-  --accent-foreground: #134e4a;
+  --card: #f2efef;
+  --card-border: #e4dfdf;
+  --muted: #52525b;
+  --accent: #00BD7C;
+  --accent-foreground: #003d28;
+  /* Primary palette from #00BD7C */
+  --primary: #00BD7C;
+  --primary-50: #e6faf4;
+  --primary-100: #b8f0e0;
+  --primary-200: #8ae6cc;
+  --primary-300: #5cd4b5;
+  --primary-400: #2ec99a;
+  --primary-500: #00BD7C;
+  --primary-600: #009966;
+  --primary-700: #007a52;
+  --primary-800: #005c3d;
+  --primary-900: #003d28;
+  --primary-950: #0a1914;
 }
 
 .dark {
@@ -18,13 +31,37 @@
   --card: #18181b;
   --card-border: #27272a;
   --muted: #a1a1aa;
-  --accent: #2dd4bf;
+  --accent: #00BD7C;
   --accent-foreground: #042f2e;
+  --primary: #00BD7C;
+  --primary-50: #e6faf4;
+  --primary-100: #b8f0e0;
+  --primary-200: #8ae6cc;
+  --primary-300: #5cd4b5;
+  --primary-400: #2ec99a;
+  --primary-500: #00BD7C;
+  --primary-600: #009966;
+  --primary-700: #007a52;
+  --primary-800: #005c3d;
+  --primary-900: #003d28;
+  --primary-950: #0a1914;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-950: var(--primary-950);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-family-display: var(--font-display);
@@ -41,12 +78,20 @@ body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
-/* Light mode gradient */
+/* Light mode gradient - subtle rose-tinted gray */
 html:not(.dark) body {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+  background: linear-gradient(180deg, #eae6e6 0%, #e3dede 50%, #dcd6d6 100%);
 }
 
 html.dark body {
+  background: linear-gradient(180deg, #0c0c0e 0%, #18181b 50%, #27272a 100%);
+}
+
+/* Loading screen - matches body gradient until data is hydrated */
+.app-loading-screen {
+  background: linear-gradient(180deg, #eae6e6 0%, #e3dede 50%, #dcd6d6 100%);
+}
+html.dark .app-loading-screen {
   background: linear-gradient(180deg, #0c0c0e 0%, #18181b 50%, #27272a 100%);
 }
 
