@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FaPause, FaPlay, FaThLarge, FaStopwatch, FaUndo } from "react-icons/fa";
+import { FaPause, FaPlay, FaTh, FaClock, FaUndo } from "react-icons/fa";
 import { expandIntervals } from "@/domain/workout";
 import { PlayerProvider, usePlayer } from "@/state/player-context";
 import {
@@ -147,9 +147,9 @@ function MobilePlayerBar() {
             className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-zinc-600 text-white transition-colors hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500"
           >
             {view === "cards" ? (
-              <FaStopwatch className="h-5 w-5" />
+              <FaClock className="h-5 w-5" />
             ) : (
-              <FaThLarge className="h-5 w-5" />
+              <FaTh className="h-5 w-5" />
             )}
           </button>
         </div>
