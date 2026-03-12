@@ -235,7 +235,7 @@ function WorkIntervalCard({
               placeholder="Exercise name"
               onClick={(e) => e.stopPropagation()}
             />
-            <div className={`mt-1 flex items-center justify-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
+            <div className={`mt-1 flex w-full items-center justify-center py-1 rounded-lg ${mutedClass}`}>
               <DurationInput
                 value={interval.durationSeconds}
                 onChange={(v) => onUpdate({ durationSeconds: v })}
@@ -483,7 +483,7 @@ function RestIntervalCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className={`font-display px-3 py-1 text-lg font-bold ${textClass}`}>Rest</div>
-            <div className={`mt-1 flex items-center justify-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
+            <div className={`mt-1 flex w-full items-center justify-center py-1 rounded-lg ${mutedClass}`}>
               <DurationInput
                 value={interval.durationSeconds}
                 onChange={(v) => onUpdate({ durationSeconds: v })}

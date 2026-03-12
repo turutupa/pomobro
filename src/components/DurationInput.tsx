@@ -104,6 +104,7 @@ export function DurationInput({
       className={`flex items-center justify-center gap-2 rounded-lg py-2.5 ${containerClassName}`}
       onClick={(e) => e.stopPropagation()}
     >
+      <span className="flex-1 min-w-0" aria-hidden />
       <button
         type="button"
         onPointerDown={startDecrementRepeat}
@@ -145,6 +146,7 @@ export function DurationInput({
       >
         +
       </button>
+      <span className="flex-1 min-w-0" aria-hidden />
     </div>
   );
 }
