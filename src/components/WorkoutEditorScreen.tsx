@@ -127,8 +127,8 @@ function MobilePlayerBar() {
         onClick={
           player.isRunning
             ? () => reset(workoutState.workout)
-            : () => {
-                resumeAudioContext();
+            : async () => {
+                await resumeAudioContext();
                 play(
                   workoutState.workout,
                   previewIndex >= 0 ? previewIndex : undefined

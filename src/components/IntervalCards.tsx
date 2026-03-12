@@ -180,17 +180,21 @@ function WorkIntervalCard({
   if (isPlaying) {
     return (
       <div
-        className={`flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 py-3 ${
+        className={`flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 ${
           isCurrent
-            ? "border-teal-400 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
-            : "border-transparent"
+            ? "border-teal-400 py-5 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
+            : "border-transparent py-3"
         }`}
         style={{ backgroundColor: color }}
       >
-        <span className={`font-display truncate text-base font-semibold ${textClass}`}>
+        <span
+          className={`font-display truncate ${isCurrent ? "text-xl font-bold md:text-2xl" : "text-base font-semibold"} ${textClass}`}
+        >
           {interval.title || "Work"}
         </span>
-        <span className={`shrink-0 text-sm font-medium ${mutedClass}`}>
+        <span
+          className={`shrink-0 font-medium ${isCurrent ? "text-base md:text-lg" : "text-sm"} ${mutedClass}`}
+        >
           {interval.durationSeconds}s
         </span>
       </div>
@@ -219,9 +223,11 @@ function WorkIntervalCard({
             <input
               ref={titleInputRef}
               type="text"
-              autoComplete="organization"
+              autoComplete="off"
               autoCorrect="on"
               autoCapitalize="words"
+              data-lpignore="true"
+              data-form-type="other"
               className={`font-display w-full rounded-md border-0 bg-transparent px-3 py-1 text-lg font-bold placeholder:opacity-70 focus:outline-none focus:ring-2 focus:ring-white/50 ${textClass}`}
               value={interval.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
@@ -229,7 +235,7 @@ function WorkIntervalCard({
               placeholder="Exercise name"
               onClick={(e) => e.stopPropagation()}
             />
-            <div className={`mt-1 flex items-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
+            <div className={`mt-1 flex items-center justify-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
               <DurationInput
                 value={interval.durationSeconds}
                 onChange={(v) => onUpdate({ durationSeconds: v })}
@@ -436,15 +442,21 @@ function RestIntervalCard({
   if (isPlaying) {
     return (
       <div
-        className={`flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 py-3 ${
+        className={`flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 ${
           isCurrent
-            ? "border-teal-400 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
-            : "border-transparent"
+            ? "border-teal-400 py-5 md:ring-2 md:ring-teal-400 md:ring-offset-2 dark:border-teal-400 dark:md:ring-offset-zinc-950"
+            : "border-transparent py-3"
         }`}
         style={{ backgroundColor: color }}
       >
-        <span className={`font-display text-base font-semibold ${textClass}`}>Rest</span>
-        <span className={`shrink-0 text-sm font-medium ${mutedClass}`}>
+        <span
+          className={`font-display ${isCurrent ? "text-xl font-bold md:text-2xl" : "text-base font-semibold"} ${textClass}`}
+        >
+          Rest
+        </span>
+        <span
+          className={`shrink-0 font-medium ${isCurrent ? "text-base md:text-lg" : "text-sm"} ${mutedClass}`}
+        >
           {interval.durationSeconds}s
         </span>
       </div>
@@ -471,7 +483,7 @@ function RestIntervalCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className={`font-display px-3 py-1 text-lg font-bold ${textClass}`}>Rest</div>
-            <div className={`mt-1 flex items-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
+            <div className={`mt-1 flex items-center justify-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
               <DurationInput
                 value={interval.durationSeconds}
                 onChange={(v) => onUpdate({ durationSeconds: v })}

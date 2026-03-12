@@ -26,7 +26,19 @@ function ensureContext(): AudioContext | null {
 /** Call from a user gesture (e.g. play button click) to unlock audio. */
 export async function resumeAudioContext(): Promise<void> {
   const c = ensureContext();
-  if (c?.state === "suspended") await c.resume();
+  if (!c) return;
+  if (c.state === "suspended") {
+    await c.resume();
+  }
+}
+
+/** Resume when app returns to foreground (mobile browsers suspend when tab is hidden). */
+if (typeof window !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && ctx?.state === "suspended") {
+      ctx.resume();
+    }
+  });
 }
 
 function playTone(
@@ -47,7 +59,7 @@ function playTone(
   oscillator.type = "sine";
   const start = context.currentTime + startTime;
   const end = start + durationMs / 1000;
-  const gain = 0.15 * getBeepVolume();
+  const gain = 0.35 * getBeepVolume();
   gainNode.gain.setValueAtTime(gain, start);
   gainNode.gain.setValueAtTime(gain, end);
 

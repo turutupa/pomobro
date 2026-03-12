@@ -167,8 +167,8 @@ function InnerPlayer() {
           onClick={
             player.isRunning
               ? pause
-              : () => {
-                  resumeAudioContext();
+              : async () => {
+                  await resumeAudioContext();
                   play(
                     workoutState.workout,
                     previewIndex >= 0 ? previewIndex : undefined

@@ -62,17 +62,85 @@ export function DurationInput({
     return () => el.removeEventListener("wheel", handler);
   }, [min, max, onChange]);
 
+  const decrement = () => {
+    const current = valueRef.current;
+    const next = Math.max(min, current - 1);
+    if (next !== current) {
+      valueRef.current = next;
+      onChange(next);
+      setLocal(String(next));
+    }
+  };
+
+  const increment = () => {
+    const current = valueRef.current;
+    const next = Math.min(max, current + 1);
+    if (next !== current) {
+      valueRef.current = next;
+      onChange(next);
+      setLocal(String(next));
+    }
+  };
+
+  const repeatRef = useRef<{ timeout: ReturnType<typeof setTimeout>; interval: ReturnType<typeof setInterval> } | null>(null);
+
+  const clearRepeat = () => {
+    if (repeatRef.current) {
+      clearTimeout(repeatRef.current.timeout);
+      clearInterval(repeatRef.current.interval);
+      repeatRef.current = null;
+    }
+  };
+
+  const startDecrementRepeat = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    decrement();
+    repeatRef.current = {
+      timeout: setTimeout(() => {
+        repeatRef.current!.interval = setInterval(decrement, 80);
+      }, 400),
+      interval: 0 as unknown as ReturnType<typeof setInterval>,
+    };
+  };
+
+  const startIncrementRepeat = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    increment();
+    repeatRef.current = {
+      timeout: setTimeout(() => {
+        repeatRef.current!.interval = setInterval(increment, 80);
+      }, 400),
+      interval: 0 as unknown as ReturnType<typeof setInterval>,
+    };
+  };
+
+  useEffect(() => () => clearRepeat(), []);
+
+  const buttonClass = `flex min-h-[48px] min-w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-xl text-xl font-medium transition-colors hover:opacity-80 active:opacity-60 touch-manipulation select-none ${suffixClassName}`;
+
   return (
     <div
       ref={containerRef}
-      className={`flex items-center gap-1.5 rounded-lg px-3 py-2.5 ${containerClassName}`}
+      className={`flex items-center justify-center gap-2 rounded-lg py-2.5 ${containerClassName}`}
       onClick={(e) => e.stopPropagation()}
     >
+      <button
+        type="button"
+        onPointerDown={startDecrementRepeat}
+        onPointerUp={clearRepeat}
+        onPointerLeave={clearRepeat}
+        onPointerCancel={clearRepeat}
+        onContextMenu={(e) => e.preventDefault()}
+        className={buttonClass}
+        aria-label="Decrease duration"
+      >
+        −
+      </button>
       <input
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
-        className={`min-w-[2.75rem] w-12 rounded bg-transparent text-right text-base font-semibold focus:outline-none md:min-w-[3rem] md:w-14 md:text-lg ${inputClassName}`}
+        className={`min-w-[2.75rem] w-12 rounded bg-transparent px-2 text-right text-base font-semibold focus:outline-none md:min-w-[3rem] md:w-14 md:text-lg ${inputClassName}`}
         value={local}
         onChange={(e) => {
           const v = e.target.value.replace(/\D/g, "");
@@ -85,7 +153,18 @@ export function DurationInput({
           e.target.setSelectionRange(e.target.value.length, e.target.value.length);
         }}
       />
-      <span className={`text-sm font-medium md:text-base ${suffixClassName}`}>s</span>
+      <button
+        type="button"
+        onPointerDown={startIncrementRepeat}
+        onPointerUp={clearRepeat}
+        onPointerLeave={clearRepeat}
+        onPointerCancel={clearRepeat}
+        onContextMenu={(e) => e.preventDefault()}
+        className={buttonClass}
+        aria-label="Increase duration"
+      >
+        +
+      </button>
     </div>
   );
 }
