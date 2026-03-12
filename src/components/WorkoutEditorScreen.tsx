@@ -62,7 +62,7 @@ function WorkoutEditorContent() {
       </header>
 
       <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 overflow-hidden px-4 pb-0 md:flex-row md:gap-8 md:pb-8 2xl:max-w-[1600px]">
-        <section className="scrollbar-thin min-h-0 w-full overflow-y-auto py-2 pb-24 md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-white/95 md:p-5 md:shadow-sm md:ring-1 md:ring-zinc-200/80 md:backdrop-blur dark:md:bg-zinc-900/95 dark:md:ring-zinc-700/50">
+        <section className="scrollbar-thin min-h-0 w-full overflow-y-auto py-2 pb-40 md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-white/95 md:p-5 md:shadow-sm md:ring-1 md:ring-zinc-200/80 md:backdrop-blur dark:md:bg-zinc-900/95 dark:md:ring-zinc-700/50">
           <IntervalEditorList />
         </section>
 
