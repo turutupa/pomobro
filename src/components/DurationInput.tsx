@@ -101,7 +101,7 @@ export function DurationInput({
 
   return (
     <div
-      className={`flex items-center justify-center gap-2 rounded-lg py-2.5 ${containerClassName}`}
+      className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 ${containerClassName}`}
       onClick={(e) => e.stopPropagation()}
     >
       <span className="flex-1 min-w-0" aria-hidden />

@@ -14,6 +14,8 @@ import { usePrepEnabled } from "@/state/prep-enabled-context";
 interface PlayerState {
   isRunning: boolean;
   currentIndex: number;
+  /** 0-based set index. When sets is 1, always 0. */
+  currentSetIndex: number;
   secondsRemainingInInterval: number;
   /** 5–1 countdown before first interval; 0 when running. */
   preparationRemaining: number;
@@ -40,6 +42,7 @@ function initialState(workout: Workout): PlayerState {
   return {
     isRunning: false,
     currentIndex: workout.intervals.length > 0 ? 0 : -1,
+    currentSetIndex: 0,
     secondsRemainingInInterval:
       workout.intervals[0]?.durationSeconds ?? 0,
     preparationRemaining: 0,
@@ -66,6 +69,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       return {
         ...state,
         currentIndex: safeIdx,
+        currentSetIndex: action.startIndex !== undefined ? 0 : state.currentSetIndex,
         secondsRemainingInInterval: target.durationSeconds,
         preparationRemaining: atFullDuration ? prepCount : state.preparationRemaining,
         isRunning: true,
@@ -89,6 +93,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       return {
         ...state,
         currentIndex: action.index,
+        currentSetIndex: 0,
         secondsRemainingInInterval:
           action.workout.intervals[action.index].durationSeconds,
         preparationRemaining: 0,
@@ -114,6 +119,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       // interval finished - advance to next
       const nextIndex = state.currentIndex + 1;
       const intervals = action.workout.intervals;
+      const sets = Math.max(1, action.workout.sets ?? 1);
       if (nextIndex < intervals.length) {
         const next = intervals[nextIndex];
         return {
@@ -122,7 +128,18 @@ function reducer(state: PlayerState, action: Action): PlayerState {
           secondsRemainingInInterval: next.durationSeconds,
         };
       }
-      // workout complete
+      // finished one set - repeat or complete
+      const nextSetIndex = state.currentSetIndex + 1;
+      if (nextSetIndex < sets) {
+        const first = intervals[0];
+        return {
+          ...state,
+          currentIndex: 0,
+          currentSetIndex: nextSetIndex,
+          secondsRemainingInInterval: first.durationSeconds,
+        };
+      }
+      // workout complete (all sets done)
       return {
         ...state,
         isRunning: false,

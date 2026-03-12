@@ -63,6 +63,48 @@ function PrepEnabledRow() {
   );
 }
 
+function SetsRow() {
+  const { state, updateMeta } = useWorkout();
+  const sets = Math.max(1, state.workout.sets ?? 1);
+  const min = 1;
+  const max = 20;
+
+  const setSets = (v: number) => {
+    updateMeta(undefined, undefined, Math.max(min, Math.min(max, v)));
+  };
+
+  return (
+    <div className="mt-4 flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-700/80 dark:bg-zinc-800/40">
+      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+        Sets
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSets(sets - 1)}
+          disabled={sets <= min}
+          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-200/80 text-zinc-600 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500"
+          aria-label="Decrease sets"
+        >
+          −
+        </button>
+        <span className="min-w-[2rem] text-center text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+          {sets}×
+        </span>
+        <button
+          type="button"
+          onClick={() => setSets(sets + 1)}
+          disabled={sets >= max}
+          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-200/80 text-zinc-600 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500"
+          aria-label="Increase sets"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ColorPicker({
   value,
   onChange,
@@ -235,15 +277,6 @@ function WorkIntervalCard({
               placeholder="Exercise name"
               onClick={(e) => e.stopPropagation()}
             />
-            <div className={`mt-1 flex w-full items-center justify-center py-1 rounded-lg ${mutedClass}`}>
-              <DurationInput
-                value={interval.durationSeconds}
-                onChange={(v) => onUpdate({ durationSeconds: v })}
-                containerClassName="bg-white/20 min-h-[2.75rem] md:min-h-[3rem]"
-                inputClassName={textClass}
-                suffixClassName={mutedClass}
-              />
-            </div>
             {!expanded && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
                 <button
@@ -409,6 +442,15 @@ function WorkIntervalCard({
             </div>
           </div>
         )}
+        <div className={`flex w-full items-center justify-center py-1 rounded-lg ${mutedClass}`}>
+          <DurationInput
+            value={interval.durationSeconds}
+            onChange={(v) => onUpdate({ durationSeconds: v })}
+            containerClassName="bg-white/20 min-h-[2.75rem] md:min-h-[3rem]"
+            inputClassName={textClass}
+            suffixClassName={mutedClass}
+          />
+        </div>
       </div>
     </div>
   );
@@ -483,15 +525,6 @@ function RestIntervalCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className={`font-display px-3 py-1 text-lg font-bold ${textClass}`}>Rest</div>
-            <div className={`mt-1 flex w-full items-center justify-center py-1 rounded-lg ${mutedClass}`}>
-              <DurationInput
-                value={interval.durationSeconds}
-                onChange={(v) => onUpdate({ durationSeconds: v })}
-                containerClassName="bg-white/20 min-h-[2.75rem] md:min-h-[3rem]"
-                inputClassName={textClass}
-                suffixClassName={mutedClass}
-              />
-            </div>
             {!expanded && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
                 <button
@@ -619,6 +652,15 @@ function RestIntervalCard({
             </div>
           </div>
         )}
+        <div className={`flex w-full items-center justify-center py-1 rounded-lg ${mutedClass}`}>
+          <DurationInput
+            value={interval.durationSeconds}
+            onChange={(v) => onUpdate({ durationSeconds: v })}
+            containerClassName="bg-white/20 min-h-[2.75rem] md:min-h-[3rem]"
+            inputClassName={textClass}
+            suffixClassName={mutedClass}
+          />
+        </div>
       </div>
     </div>
   );
@@ -762,6 +804,7 @@ export function IntervalEditorList() {
           </div>
         );
       })}
+      {!player.isRunning && <SetsRow />}
     </div>
   );
 }

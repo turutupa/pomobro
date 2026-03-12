@@ -51,6 +51,8 @@ export interface Workout {
   name: string;
   description?: string;
   intervals: Interval[];
+  /** Number of sets (times to repeat the full workout). 1 = one run, 2 = repeat once, etc. */
+  sets?: number;
   /** Global defaults that intervals can override. */
   defaults: {
     workDurationSeconds: number;
@@ -92,6 +94,13 @@ export function totalDurationSeconds(workout: Workout): number {
  * - Rest at end is allowed (user can add more work after it).
  */
 export function normalizeWorkout(workout: Workout): Workout {
+  // Migrate legacy loopCount to sets
+  const raw = workout as Workout & { loopCount?: number };
+  const migrated: Workout =
+    raw.loopCount !== undefined && raw.sets === undefined
+      ? { ...workout, sets: raw.loopCount }
+      : workout;
+
   const normalized: Interval[] = [];
 
   for (const interval of workout.intervals) {
@@ -110,7 +119,7 @@ export function normalizeWorkout(workout: Workout): Workout {
     normalized.push(interval);
   }
 
-  return { ...workout, intervals: normalized };
+  return { ...migrated, intervals: normalized };
 }
 
 export function addWorkIntervalAfter(

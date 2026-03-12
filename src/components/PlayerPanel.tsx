@@ -49,6 +49,7 @@ function InnerPlayer() {
   } = usePlayer();
 
   const intervals = workoutState.workout.intervals;
+  const sets = Math.max(1, workoutState.workout.sets ?? 1);
   // When not running: preview from selected card (or first). When running: use actual current.
   const previewIndex =
     !player.isRunning && workoutState.selectedIntervalId
@@ -61,10 +62,14 @@ function InnerPlayer() {
         ? previewIndex
         : 0;
   const current = intervals[effectiveIndex] ?? null;
+  const isLastInterval = effectiveIndex === intervals.length - 1;
+  const hasMoreSets = player.isRunning && sets > 1 && player.currentSetIndex < sets - 1;
   const next =
     effectiveIndex >= 0 && effectiveIndex < intervals.length - 1
       ? intervals[effectiveIndex + 1]
-      : null;
+      : isLastInterval && hasMoreSets
+        ? intervals[0]
+        : null;
 
   const inPreparation = player.isRunning && player.preparationRemaining > 0;
   const currentTotal = inPreparation ? 7 : (current?.durationSeconds ?? 0);
@@ -105,8 +110,15 @@ function InnerPlayer() {
   return (
     <div className="flex min-w-0 flex-1 flex-col justify-center gap-6">
       <div className="min-w-0 space-y-4">
-        <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-500">
-          Current interval
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-500">
+            Current interval
+          </div>
+          {player.isRunning && sets > 1 && (
+            <div className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-500">
+              Set {player.currentSetIndex + 1} of {sets}
+            </div>
+          )}
         </div>
         <div className="font-display break-words text-3xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-zinc-50 md:text-4xl">
           {inPreparation

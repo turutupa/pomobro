@@ -29,7 +29,7 @@ type Action =
   | { type: "deleteInterval"; id: string }
   | { type: "moveInterval"; id: string; newIndex: number }
   | { type: "updateInterval"; id: string; patch: Partial<Interval> }
-  | { type: "updateMeta"; name?: string; description?: string };
+  | { type: "updateMeta"; name?: string; description?: string; sets?: number };
 
 const WorkoutContext = createContext<
   | {
@@ -100,6 +100,10 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
           action.description === undefined
             ? state.workout.description
             : action.description,
+        sets:
+          action.sets === undefined
+            ? state.workout.sets
+            : action.sets,
       };
       return { ...state, workout };
     }
@@ -155,8 +159,8 @@ export function useWorkout() {
       dispatch({ type: "moveInterval", id, newIndex }),
     updateInterval: (id: string, patch: Partial<Interval>) =>
       dispatch({ type: "updateInterval", id, patch }),
-    updateMeta: (name?: string, description?: string) =>
-      dispatch({ type: "updateMeta", name, description }),
+    updateMeta: (name?: string, description?: string, sets?: number) =>
+      dispatch({ type: "updateMeta", name, description, sets }),
   };
 
   return { ...ctx, ...actions };

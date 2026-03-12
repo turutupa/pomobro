@@ -28,13 +28,16 @@ export function PlaybackBeepController() {
     const { remaining, index, running, prepRemaining } = prevRef.current;
     const rem = player.secondsRemainingInInterval;
     const currentTotal = current?.durationSeconds ?? 0;
+    const sets = Math.max(1, workoutState.workout.sets ?? 1);
 
-    // Three long beeps when workout completes (last interval ended, not user stop).
+    // Three long beeps when workout completes (last interval of last set ended, not user stop).
+    const onLastSet = player.currentSetIndex === sets - 1;
     const workoutJustCompleted =
       remaining === 1 &&
       running &&
       !player.isRunning &&
-      index === intervals.length - 1;
+      index === intervals.length - 1 &&
+      onLastSet;
     if (workoutJustCompleted && lastPlayedRef.current !== "workout-complete") {
       lastPlayedRef.current = "workout-complete";
       const lastInterval = intervals[index];
@@ -81,7 +84,9 @@ export function PlaybackBeepController() {
     prevRef.current = { remaining: rem, index: player.currentIndex, running: player.isRunning, prepRemaining: player.preparationRemaining };
   }, [
     workoutState.workout.intervals,
+    workoutState.workout.sets,
     player.currentIndex,
+    player.currentSetIndex,
     player.isRunning,
     player.secondsRemainingInInterval,
     player.preparationRemaining,
