@@ -39,28 +39,9 @@ export function DurationInput({
     }
   };
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef(value);
   const parsed = Number.isNaN(parseInt(local, 10)) ? value : Math.max(min, Math.min(max, parseInt(local, 10)));
   valueRef.current = parsed;
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const current = valueRef.current;
-      const delta = e.deltaY < 0 ? 1 : -1;
-      const next = Math.max(min, Math.min(max, current + delta));
-      if (next !== current) {
-        onChange(next);
-        setLocal(String(next));
-      }
-    };
-    el.addEventListener("wheel", handler, { passive: false });
-    return () => el.removeEventListener("wheel", handler);
-  }, [min, max, onChange]);
 
   const decrement = () => {
     const current = valueRef.current;
@@ -120,7 +101,6 @@ export function DurationInput({
 
   return (
     <div
-      ref={containerRef}
       className={`flex items-center justify-center gap-2 rounded-lg py-2.5 ${containerClassName}`}
       onClick={(e) => e.stopPropagation()}
     >
