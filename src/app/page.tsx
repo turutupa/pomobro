@@ -54,9 +54,14 @@ function AppContent() {
                 <path d="M10 8v16M10 8h6a5 5 0 0 1 0 10" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-4xl">
-              Pomobro
-            </h1>
+            <div className="flex items-baseline gap-3">
+              <h1 className="font-brand text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-4xl">
+                Pomobro
+              </h1>
+              <span className="hidden text-sm text-zinc-500 dark:text-zinc-400 md:inline">
+                Voice-guided interval timer
+              </span>
+            </div>
           </div>
           <SettingsDropdown />
         </header>
@@ -84,9 +89,14 @@ function AppContent() {
               <path d="M10 8v16M10 8h6a5 5 0 0 1 0 10" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-4xl">
+          <div className="flex items-baseline gap-3">
+          <h1 className="font-brand text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-4xl">
             Pomobro
           </h1>
+          <span className="hidden text-sm text-zinc-500 dark:text-zinc-400 md:inline">
+            Voice-guided interval timer
+          </span>
+        </div>
         </div>
         <SettingsDropdown />
       </header>

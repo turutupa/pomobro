@@ -68,7 +68,7 @@ export function WorkoutListScreen() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-5">
-        <h2 className="text-base font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+        <h2 className="font-display text-base font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
           My workouts
         </h2>
 
@@ -79,7 +79,7 @@ export function WorkoutListScreen() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
               </svg>
             </div>
-            <p className="mb-2 text-base font-medium text-zinc-700 dark:text-zinc-300">
+            <p className="font-display mb-2 text-base font-semibold text-zinc-700 dark:text-zinc-300">
               No workouts yet
             </p>
             <p className="mx-auto mb-6 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
@@ -108,7 +108,7 @@ export function WorkoutListScreen() {
                   onClick={() => setCurrentId(w.id)}
                   className="min-w-0 flex-1 cursor-pointer py-1 text-left"
                 >
-                  <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  <div className="font-display font-semibold text-zinc-900 dark:text-zinc-100">
                     {w.name || "Untitled"}
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -246,7 +246,7 @@ export function WorkoutListScreen() {
               className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 id="delete-modal-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              <h2 id="delete-modal-title" className="font-display text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 Delete workout?
               </h2>
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">

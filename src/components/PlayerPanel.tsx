@@ -9,7 +9,7 @@ import { resumeAudioContext } from "@/voice/BeepEngine";
 function formatSeconds(total: number): string {
   const m = Math.floor(total / 60);
   const s = total % 60;
-  if (m === 0) return `${s}s`;
+  if (m === 0) return `${s}`;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
@@ -32,7 +32,7 @@ function NextIntervalInfo({ interval }: { interval: Interval | null }) {
       <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-500">
         Coming next
       </div>
-      <div className="mt-1 text-lg font-semibold text-slate-800 dark:text-zinc-100">
+      <div className="font-display mt-1 text-lg font-bold text-slate-800 dark:text-zinc-100">
         {title} · {formatSeconds(interval.durationSeconds)}
       </div>
     </div>
@@ -108,7 +108,7 @@ function InnerPlayer() {
         <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-500">
           Current interval
         </div>
-        <div className="break-words text-3xl font-bold leading-tight text-slate-900 dark:text-zinc-50 md:text-4xl">
+        <div className="font-display break-words text-3xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-zinc-50 md:text-4xl">
           {inPreparation
             ? "Get ready"
             : current
@@ -138,7 +138,7 @@ function InnerPlayer() {
 
       <div className="space-y-4">
         <div className="flex items-baseline justify-between gap-2">
-          <div className="text-5xl font-bold tabular-nums text-slate-900 dark:text-zinc-50 md:text-6xl">
+          <div className="font-display text-5xl font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-zinc-50 md:text-6xl">
             {formatSeconds(displaySeconds || 0)}
           </div>
           <div className="text-xs text-slate-500 dark:text-zinc-400">

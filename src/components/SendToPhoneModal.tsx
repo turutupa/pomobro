@@ -51,7 +51,7 @@ export function SendToPhoneModal({ workouts, onClose }: SendToPhoneModalProps) {
         className="w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="send-to-phone-title" className="border-b border-zinc-200 px-5 py-4 text-lg font-semibold text-zinc-900 dark:border-zinc-700 dark:text-zinc-100">
+        <h2 id="send-to-phone-title" className="font-display border-b border-zinc-200 px-5 py-4 text-lg font-semibold text-zinc-900 dark:border-zinc-700 dark:text-zinc-100">
           Send to phone
         </h2>
         <div className="flex flex-col items-center gap-4 p-5">

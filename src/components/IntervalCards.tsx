@@ -187,7 +187,7 @@ function WorkIntervalCard({
         }`}
         style={{ backgroundColor: color }}
       >
-        <span className={`truncate text-base font-semibold ${textClass}`}>
+        <span className={`font-display truncate text-base font-semibold ${textClass}`}>
           {interval.title || "Work"}
         </span>
         <span className={`shrink-0 text-sm font-medium ${mutedClass}`}>
@@ -218,7 +218,7 @@ function WorkIntervalCard({
           <div className="min-w-0 flex-1">
             <input
               ref={titleInputRef}
-              className={`w-full rounded-md border-0 bg-transparent px-3 py-1 text-lg font-bold placeholder:opacity-70 focus:outline-none focus:ring-2 focus:ring-white/50 ${textClass}`}
+              className={`font-display w-full rounded-md border-0 bg-transparent px-3 py-1 text-lg font-bold placeholder:opacity-70 focus:outline-none focus:ring-2 focus:ring-white/50 ${textClass}`}
               value={interval.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
@@ -439,7 +439,7 @@ function RestIntervalCard({
         }`}
         style={{ backgroundColor: color }}
       >
-        <span className={`text-base font-semibold ${textClass}`}>Rest</span>
+        <span className={`font-display text-base font-semibold ${textClass}`}>Rest</span>
         <span className={`shrink-0 text-sm font-medium ${mutedClass}`}>
           {interval.durationSeconds}s
         </span>
@@ -466,7 +466,7 @@ function RestIntervalCard({
       <div className="flex flex-col gap-1 px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className={`px-3 py-1 text-lg font-bold ${textClass}`}>Rest</div>
+            <div className={`font-display px-3 py-1 text-lg font-bold ${textClass}`}>Rest</div>
             <div className={`mt-1 flex items-center gap-2 px-3 py-1 -mx-1 rounded-lg ${mutedClass}`}>
               <DurationInput
                 value={interval.durationSeconds}

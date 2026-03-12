@@ -55,7 +55,7 @@ export function WorkoutHeader() {
                 (e.target as HTMLInputElement).blur();
               }
             }}
-            className="min-w-0 flex-1 rounded-lg border-0 bg-transparent px-3 py-1.5 text-lg font-semibold text-zinc-800 outline-none focus:ring-2 focus:ring-sky-400/50 dark:text-zinc-200"
+            className="font-display min-w-0 flex-1 rounded-lg border-0 bg-transparent px-3 py-1.5 text-lg font-semibold text-zinc-800 outline-none focus:ring-2 focus:ring-sky-400/50 dark:text-zinc-200"
             placeholder="Workout name"
           />
           <div className="relative">

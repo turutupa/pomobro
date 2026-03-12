@@ -27,6 +27,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-family-display: var(--font-display);
+  --font-family-brand: var(--font-brand);
 }
 
 html {
