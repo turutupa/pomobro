@@ -837,16 +837,37 @@ function LooperIntervalCard({
   const looperColor = getLooperColor(interval.id, intervals);
 
   if (isPlaying) {
+    const strokeWidth = 2;
+    const h = 12;
+    const w = 20;
+    const r = 4;
+    const mid = h / 2;
     return (
       <div
-        className="flex w-full items-center gap-2 py-2"
+        className={`flex w-full items-center gap-2 py-2 transition-opacity ${looperProgress ? "" : "opacity-70"}`}
         style={{ color: looperColor }}
       >
-        <div className="h-px w-6 shrink-0" style={{ backgroundColor: looperColor }} />
-        <span className="font-display shrink-0 text-sm font-semibold">
-          Repeat
-        </span>
-        <div className="h-px flex-1" style={{ backgroundColor: looperColor }} />
+        <svg
+          width={w}
+          height={h}
+          viewBox={`0 0 ${w} ${h}`}
+          className="shrink-0"
+          aria-hidden
+        >
+          <path
+            d={`M ${r} 0 L ${r} ${mid - r} Q ${r} ${mid} ${r + r} ${mid} L ${w} ${mid}`}
+            fill="none"
+            stroke={looperColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="font-display shrink-0 text-sm font-semibold">Repeat</span>
+        <div
+          className="h-0.5 flex-1 shrink self-center"
+          style={{ backgroundColor: looperColor, minWidth: 8 }}
+        />
         {looperProgress ? (
           <span className="shrink-0 text-sm font-medium">
             {looperProgress.remaining} of {looperProgress.total} left
@@ -854,7 +875,22 @@ function LooperIntervalCard({
         ) : (
           <span className="shrink-0 text-sm font-medium opacity-70">—</span>
         )}
-        <div className="h-px w-6 shrink-0" style={{ backgroundColor: looperColor }} />
+        <svg
+          width={w}
+          height={h}
+          viewBox={`0 0 ${w} ${h}`}
+          className="shrink-0"
+          aria-hidden
+        >
+          <path
+            d={`M 0 ${mid} L ${w - r * 2} ${mid} Q ${w - r} ${mid} ${w - r} 0`}
+            fill="none"
+            stroke={looperColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
     );
   }
@@ -987,7 +1023,10 @@ function Connector({
   aboveId: string;
   belowId?: string | null;
 }) {
+  const { state: player } = usePlayer();
   const { state, addWorkAfter, addRestAfter, addRestBetween, addLooperAfter } = useWorkout();
+  const isInPlaybackMode = player.isRunning || player.isPaused;
+  if (isInPlaybackMode) return null;
   const above = state.workout.intervals.find((i) => i.id === aboveId);
   const below = belowId ? state.workout.intervals.find((i) => i.id === belowId) : null;
   const canAddRest = above && isWork(above) && (!below || isWork(below));
@@ -1046,17 +1085,18 @@ export function IntervalEditorList() {
     updateInterval,
   } = useWorkout();
   const { state: player, play } = usePlayer();
+  const isInPlaybackMode = player.isRunning || player.isPaused;
   const { intervals } = state.workout;
   const sets = Math.max(1, state.workout.sets ?? 1);
   const playbackIntervals = expandIntervals(intervals);
   const currentPlaybackInterval = playbackIntervals[player.currentIndex] ?? null;
-  const looperProgressMap = player.isRunning
+  const looperProgressMap = isInPlaybackMode
     ? getLooperProgressAtExpandedIndex(intervals, player.currentIndex)
     : new Map<string, { iteration: number; total: number; remaining: number }>();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!player.isRunning) return;
+    if (!isInPlaybackMode) return;
     if (window.innerWidth >= 768) return;
     const current = currentPlaybackInterval;
     if (!current) return;
@@ -1092,7 +1132,7 @@ export function IntervalEditorList() {
   }
 
   const handleCardSelect = (intervalId: string) => {
-    if (player.isRunning) {
+    if (isInPlaybackMode) {
       const startId = getStartIntervalIdForPlayback(intervals, intervalId);
       if (startId) play(state.workout, startId);
     } else {
@@ -1107,12 +1147,12 @@ export function IntervalEditorList() {
   };
 
   return (
-    <div className={`flex flex-col ${player.isRunning ? "gap-2.5" : "gap-1"}`}>
-      {!player.isRunning && <PrepEnabledRow />}
+    <div className={`flex flex-col ${isInPlaybackMode ? "gap-2.5" : "gap-1"}`}>
+      {!isInPlaybackMode && <PrepEnabledRow />}
       {intervals.map((interval, index) => {
         const isSelected = state.selectedIntervalId === interval.id;
         const isCurrent =
-          player.isRunning &&
+          isInPlaybackMode &&
           (interval.type === "work" || interval.type === "rest") &&
           currentPlaybackInterval?.id === interval.id;
 
@@ -1127,7 +1167,7 @@ export function IntervalEditorList() {
                 interval={interval}
                 isSelected={isSelected}
                 isCurrent={isCurrent}
-                isPlaying={player.isRunning}
+                isPlaying={isInPlaybackMode}
                 looperBorderColor={getLooperBorderColor(interval.id, intervals)}
                 onSelect={() => handleCardSelect(interval.id)}
                 onPlayFromHere={() => handlePlayFromCard(interval.id)}
@@ -1139,7 +1179,7 @@ export function IntervalEditorList() {
                 interval={interval}
                 isSelected={isSelected}
                 isCurrent={isCurrent}
-                isPlaying={player.isRunning}
+                isPlaying={isInPlaybackMode}
                 intervals={intervals}
                 looperProgress={looperProgressMap.get(interval.id)}
                 onSelect={() => handleCardSelect(interval.id)}
@@ -1152,7 +1192,7 @@ export function IntervalEditorList() {
                 interval={interval}
                 isSelected={isSelected}
                 isCurrent={isCurrent}
-                isPlaying={player.isRunning}
+                isPlaying={isInPlaybackMode}
                 looperBorderColor={getLooperBorderColor(interval.id, intervals)}
                 onSelect={() => handleCardSelect(interval.id)}
                 onPlayFromHere={() => handlePlayFromCard(interval.id)}
@@ -1160,7 +1200,7 @@ export function IntervalEditorList() {
                 onUpdate={(p) => updateInterval(interval.id, p)}
               />
             )}
-            {!player.isRunning &&
+            {!isInPlaybackMode &&
               (index < intervals.length - 1 ? (
                 <Connector
                   aboveId={interval.id}
@@ -1172,7 +1212,7 @@ export function IntervalEditorList() {
           </div>
         );
       })}
-      {player.isRunning && sets > 1 && (
+      {isInPlaybackMode && sets > 1 && (
         <div className="rounded-xl border border-zinc-300 bg-zinc-200/80 px-4 py-2.5 dark:border-zinc-600 dark:bg-zinc-800/80">
           <div className="flex w-full items-center justify-between gap-3">
             <span className="font-display text-sm font-semibold text-zinc-700 dark:text-zinc-400">
@@ -1184,7 +1224,7 @@ export function IntervalEditorList() {
           </div>
         </div>
       )}
-      {!player.isRunning && <SetsRow />}
+      {!isInPlaybackMode && <SetsRow />}
     </div>
   );
 }

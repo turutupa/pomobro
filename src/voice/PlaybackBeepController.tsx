@@ -1,18 +1,29 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import type {
+  BeepSoundType,
+  RestInterval,
+  WorkInterval,
+} from "@/domain/workout";
+import { expandIntervals } from "@/domain/workout";
 import { usePlayer } from "@/state/player-context";
 import { useWorkout } from "@/state/workout-context";
+import { useEffect, useRef } from "react";
 import { playBeep, playLongBeep, playWorkoutCompleteBeeps } from "./BeepEngine";
-import { expandIntervals } from "@/domain/workout";
-import type { BeepSoundType, WorkInterval, RestInterval } from "@/domain/workout";
 
-function isWork(interval: WorkInterval | RestInterval): interval is WorkInterval {
+function isWork(
+  interval: WorkInterval | RestInterval,
+): interval is WorkInterval {
   return interval.type === "work";
 }
 
-function getBeepSettings(interval: WorkInterval | RestInterval): { enabled: boolean; sound: BeepSoundType } {
-  const sound: BeepSoundType = (isWork(interval) ? interval.voice?.beepSound : interval.beepSound) ?? "beep";
+function getBeepSettings(interval: WorkInterval | RestInterval): {
+  enabled: boolean;
+  sound: BeepSoundType;
+} {
+  const sound: BeepSoundType =
+    (isWork(interval) ? interval.voice?.beepSound : interval.beepSound) ??
+    "beep";
   const enabled = isWork(interval) ? interval.voice?.beep : interval.beep;
   return { enabled: !!enabled, sound };
 }
@@ -20,7 +31,12 @@ function getBeepSettings(interval: WorkInterval | RestInterval): { enabled: bool
 export function PlaybackBeepController() {
   const { state: workoutState } = useWorkout();
   const { state: player } = usePlayer();
-  const prevRef = useRef({ remaining: 0, index: -1, running: false, prepRemaining: 0 });
+  const prevRef = useRef({
+    remaining: 0,
+    index: -1,
+    running: false,
+    prepRemaining: 0,
+  });
   const lastPlayedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -43,7 +59,8 @@ export function PlaybackBeepController() {
       lastPlayedRef.current = "workout-complete";
       const lastInterval = intervals[index];
       if (lastInterval) {
-        const { enabled: endEnabled, sound: endSound } = getBeepSettings(lastInterval);
+        const { enabled: endEnabled, sound: endSound } =
+          getBeepSettings(lastInterval);
         if (endEnabled) {
           playWorkoutCompleteBeeps(endSound);
         }
@@ -51,7 +68,12 @@ export function PlaybackBeepController() {
     }
 
     if (!current) {
-      prevRef.current = { remaining: rem, index: player.currentIndex, running: player.isRunning, prepRemaining: player.preparationRemaining };
+      prevRef.current = {
+        remaining: rem,
+        index: player.currentIndex,
+        running: player.isRunning,
+        prepRemaining: player.preparationRemaining,
+      };
       return;
     }
 
@@ -59,16 +81,27 @@ export function PlaybackBeepController() {
 
     if (!enabled || !player.isRunning) {
       lastPlayedRef.current = null;
-      prevRef.current = { remaining: rem, index: player.currentIndex, running: player.isRunning, prepRemaining: player.preparationRemaining };
+      prevRef.current = {
+        remaining: rem,
+        index: player.currentIndex,
+        running: player.isRunning,
+        prepRemaining: player.preparationRemaining,
+      };
       return;
     }
 
     // Long beep when interval starts (from prep, from previous interval, or at full duration)
     const fromPrep = prepRemaining > 0 && player.preparationRemaining === 0;
     const fromPrevInterval = player.currentIndex > index;
-    const atIntervalStart = player.preparationRemaining === 0 && currentTotal > 0 && rem === currentTotal;
+    const atIntervalStart =
+      player.preparationRemaining === 0 &&
+      currentTotal > 0 &&
+      rem === currentTotal;
     const startKey = `start-${player.currentIndex}`;
-    if ((fromPrep || fromPrevInterval || atIntervalStart) && lastPlayedRef.current !== startKey) {
+    if (
+      (fromPrep || fromPrevInterval || atIntervalStart) &&
+      lastPlayedRef.current !== startKey
+    ) {
       lastPlayedRef.current = startKey;
       playLongBeep(sound);
     }
@@ -82,7 +115,12 @@ export function PlaybackBeepController() {
       playBeep(sound);
     }
 
-    prevRef.current = { remaining: rem, index: player.currentIndex, running: player.isRunning, prepRemaining: player.preparationRemaining };
+    prevRef.current = {
+      remaining: rem,
+      index: player.currentIndex,
+      running: player.isRunning,
+      prepRemaining: player.preparationRemaining,
+    };
   }, [
     workoutState.workout.intervals,
     workoutState.workout.sets,
