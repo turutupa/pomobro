@@ -4,16 +4,20 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useWorkout } from "@/state/workout-context";
 import { usePlayer } from "@/state/player-context";
-import { usePrepEnabled } from "@/state/prep-enabled-context";
 import { usePreviewMode } from "@/state/preview-mode-context";
 import {
   Interval,
   WorkInterval,
   RestInterval,
   LooperInterval,
+  PrepInterval,
   expandIntervals,
   getLooperProgressAtExpandedIndex,
   getStartIntervalIdForPlayback,
+  getLooperForInterval,
+  getLooperIfTopOfBlock,
+  getLooperExtendableIds,
+  getLooperBlock,
   type BeepSoundType,
 } from "@/domain/workout";
 import { resumeAudioContext } from "@/voice/BeepEngine";
@@ -55,14 +59,13 @@ function getLooperColor(looperId: string, intervals: Interval[]): string {
   return LOOPER_COLORS[Math.max(0, idx) % LOOPER_COLORS.length];
 }
 
-/** Returns the 1px border color for a work/rest card if it's in a looper's block. */
+/** Returns the 1px border color for a looper card (to show which block it controls). */
 function getLooperBorderColor(
   intervalId: string,
   intervals: Interval[],
 ): string | undefined {
   const idx = intervals.findIndex((i) => i.id === intervalId);
   if (idx === -1) return undefined;
-  // Find the next looper after this interval
   for (let i = idx + 1; i < intervals.length; i++) {
     if (intervals[i].type === "looper") {
       return getLooperColor(intervals[i].id, intervals);
@@ -86,28 +89,301 @@ function isLooper(interval: Interval): interval is LooperInterval {
   return interval.type === "looper";
 }
 
-function PrepEnabledRow() {
-  const { prepEnabled, setPrepEnabled } = usePrepEnabled();
-  return (
-    <div className="mb-3 flex items-center justify-between rounded-xl border border-zinc-300 bg-zinc-200 px-4 py-3 dark:border-zinc-700/80 dark:bg-zinc-800/40">
-      <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-400">
-        Get ready countdown
-      </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={prepEnabled}
-        onClick={() => setPrepEnabled(!prepEnabled)}
-        className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-          prepEnabled ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
+function isPrep(interval: Interval): interval is PrepInterval {
+  return interval.type === "prep";
+}
+
+const PREP_BG_COLOR = "#0d9488"; // teal - distinct from amber pause/looper
+
+interface PrepIntervalCardProps {
+  interval: PrepInterval;
+  isSelected: boolean;
+  isCurrent: boolean;
+  isPlaying: boolean;
+  onSelect: () => void;
+  onPlayFromHere: () => void;
+  onDelete: () => void;
+  onUpdate: (patch: Partial<PrepInterval>) => void;
+}
+
+function PrepIntervalCard({
+  interval,
+  isSelected,
+  isCurrent,
+  isPlaying,
+  onSelect,
+  onPlayFromHere,
+  onDelete,
+  onUpdate,
+}: PrepIntervalCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const { state, selectInterval, clearLastAddedIntervalId } = useWorkout();
+  const color = PREP_BG_COLOR;
+
+  useEffect(() => {
+    if (state.lastAddedIntervalId === interval.id) {
+      selectInterval(interval.id);
+      clearLastAddedIntervalId();
+      const el = document.getElementById(`interval-${interval.id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [state.lastAddedIntervalId, interval.id, selectInterval, clearLastAddedIntervalId]);
+  const textClass = "text-white";
+  const mutedClass = "text-white/80";
+
+  if (isPlaying) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        data-interactive
+        onClick={onSelect}
+        onKeyDown={(e) => e.key === "Enter" && onSelect()}
+        className={`flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 transition-opacity ${
+          isCurrent
+            ? "border-zinc-400 py-5 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
+            : "border-transparent py-3 opacity-70"
         }`}
+        style={{ backgroundColor: color }}
       >
         <span
-          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-            prepEnabled ? "left-6 translate-x-[-100%]" : "left-1"
-          }`}
-        />
-      </button>
+          className={`font-display ${isCurrent ? "text-xl font-bold md:text-2xl" : "text-base font-semibold"} ${textClass}`}
+        >
+          Get ready
+        </span>
+        <span
+          className={`shrink-0 min-w-[2.5rem] max-w-[3.25rem] px-3 text-center font-medium ${isCurrent ? "text-base md:text-lg text-white" : "text-sm text-white/80"}`}
+        >
+          {interval.durationSeconds}s
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-interactive
+      onClick={onSelect}
+      onKeyDown={(e) => e.key === "Enter" && onSelect()}
+      className={`group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 shadow-md transition-all duration-200 ${
+        isSelected || isCurrent
+          ? "border-zinc-400 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
+          : "border-transparent"
+      }`}
+      style={{ backgroundColor: color }}
+    >
+      <div className="flex flex-col gap-1 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-display px-3 py-1 text-lg font-bold text-white">
+              Get ready
+            </div>
+            {!expanded && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate({
+                        voice: {
+                          ...interval.voice,
+                          mute: !interval.voice?.mute,
+                        },
+                      });
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      interval.voice?.mute
+                        ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        : "bg-black/35 text-white hover:bg-black/45"
+                    }`}
+                  >
+                    Voice {interval.voice?.mute ? "Off" : "On"}
+                  </button>
+                  {!interval.voice?.mute && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdate({
+                          voice: {
+                            ...interval.voice,
+                            announceStart: !(interval.voice?.announceStart ?? true),
+                          },
+                        });
+                      }}
+                      className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        (interval.voice?.announceStart ?? true)
+                          ? "bg-black/35 text-white hover:bg-black/45"
+                          : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                      }`}
+                    >
+                      Start {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 border-l border-white/30 pl-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate({ beep: !interval.beep });
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      interval.beep
+                        ? "bg-black/35 text-white hover:bg-black/45"
+                        : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                    }`}
+                  >
+                    Beep {interval.beep ? "On" : "Off"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded((x) => !x);
+              }}
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 text-white/80"
+              aria-label={expanded ? "Collapse options" : "Expand options"}
+            >
+              <svg
+                className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayFromHere();
+              }}
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 text-white/90"
+              aria-label="Start from this interval"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 text-white/80"
+              aria-label="Delete"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        {expanded && (
+          <div
+            className="mt-3 flex flex-col gap-3 rounded-xl p-3 backdrop-blur-sm bg-white/15"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-white/80">Voice</span>
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdate({
+                    voice: {
+                      ...interval.voice,
+                      mute: !interval.voice?.mute,
+                    },
+                  })
+                }
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  interval.voice?.mute
+                    ? "bg-black/20 text-white/50"
+                    : "bg-black/35 text-white"
+                }`}
+              >
+                {interval.voice?.mute ? "Off" : "On"}
+              </button>
+            </div>
+            {!interval.voice?.mute && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-white/80">
+                  Voice at start
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdate({
+                      voice: {
+                        ...interval.voice,
+                        announceStart: !(interval.voice?.announceStart ?? true),
+                      },
+                    })
+                  }
+                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    (interval.voice?.announceStart ?? true)
+                      ? "bg-black/35 text-white"
+                      : "bg-black/20 text-white/50"
+                  }`}
+                >
+                  {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                </button>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-white/80">Beep</span>
+              <button
+                type="button"
+                onClick={() => onUpdate({ beep: !interval.beep })}
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  interval.beep
+                    ? "bg-black/35 text-white"
+                    : "bg-black/20 text-white/50"
+                }`}
+              >
+                {interval.beep ? "On" : "Off"}
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="flex w-full items-center justify-center py-1 rounded-lg text-white/80">
+          <DurationInput
+            value={interval.durationSeconds}
+            onChange={(v) => onUpdate({ durationSeconds: v })}
+            min={3}
+            max={30}
+            containerClassName="bg-white/20 min-h-[2.75rem] md:min-h-[3rem]"
+            inputClassName="text-white"
+            suffixClassName="text-white"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -354,55 +630,137 @@ function WorkIntervalCard({
             />
             {!expanded && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdate({
-                      voice: {
-                        ...interval.voice,
-                        mute: !interval.voice?.mute,
-                      },
-                    });
-                  }}
-                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    isLight
-                      ? interval.voice?.mute
-                        ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
-                        : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
-                      : interval.voice?.mute
-                        ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
-                        : "bg-black/35 text-white hover:bg-black/45"
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate({
+                        voice: {
+                          ...interval.voice,
+                          mute: !interval.voice?.mute,
+                        },
+                      });
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      isLight
+                        ? interval.voice?.mute
+                          ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                          : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                        : interval.voice?.mute
+                          ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                          : "bg-black/35 text-white hover:bg-black/45"
+                    }`}
+                  >
+                    Voice {interval.voice?.mute ? "Off" : "On"}
+                  </button>
+                  {!interval.voice?.mute && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({
+                            voice: {
+                              ...interval.voice,
+                              announceStart: !(interval.voice?.announceStart ?? true),
+                            },
+                          });
+                        }}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          isLight
+                            ? (interval.voice?.announceStart ?? true)
+                              ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                              : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                            : (interval.voice?.announceStart ?? true)
+                              ? "bg-black/35 text-white hover:bg-black/45"
+                              : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        }`}
+                      >
+                        Start {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({
+                            voice: {
+                              ...interval.voice,
+                              announceHalfway: !(interval.voice?.announceHalfway ?? false),
+                            },
+                          });
+                        }}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          isLight
+                            ? (interval.voice?.announceHalfway ?? false)
+                              ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                              : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                            : (interval.voice?.announceHalfway ?? false)
+                              ? "bg-black/35 text-white hover:bg-black/45"
+                              : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        }`}
+                      >
+                        Halfway {(interval.voice?.announceHalfway ?? false) ? "On" : "Off"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({
+                            voice: {
+                              ...interval.voice,
+                              finalCountdownSeconds:
+                                (interval.voice?.finalCountdownSeconds ?? 3) > 0 ? 0 : 3,
+                            },
+                          });
+                        }}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          isLight
+                            ? (interval.voice?.finalCountdownSeconds ?? 3) > 0
+                              ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                              : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                            : (interval.voice?.finalCountdownSeconds ?? 3) > 0
+                              ? "bg-black/35 text-white hover:bg-black/45"
+                              : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        }`}
+                      >
+                        End {((interval.voice?.finalCountdownSeconds ?? 3) > 0) ? "On" : "Off"}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div
+                  className={`flex items-center gap-1.5 border-l pl-2 ${
+                    isLight ? "border-zinc-400/50" : "border-white/30"
                   }`}
                 >
-                  Voice {interval.voice?.mute ? "Off" : "On"}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdate({
-                      voice: {
-                        ...interval.voice,
-                        beep: !interval.voice?.beep,
-                      },
-                    });
-                  }}
-                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    isLight
-                      ? interval.voice?.beep
-                        ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
-                        : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
-                      : interval.voice?.beep
-                        ? "bg-black/35 text-white hover:bg-black/45"
-                        : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
-                  }`}
-                >
-                  Beep{" "}
-                  {interval.voice?.beep
-                    ? (interval.voice.beepSound ?? "beep")
-                    : "Off"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate({
+                        voice: {
+                          ...interval.voice,
+                          beep: !interval.voice?.beep,
+                        },
+                      });
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      isLight
+                        ? interval.voice?.beep
+                          ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                          : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                        : interval.voice?.beep
+                          ? "bg-black/35 text-white hover:bg-black/45"
+                          : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                    }`}
+                  >
+                    Beep{" "}
+                    {interval.voice?.beep
+                      ? (interval.voice.beepSound ?? "beep")
+                      : "Off"}
+                  </button>
+                </div>
                 {interval.description && (
                   <span
                     className={`max-w-[120px] truncate rounded-full px-2.5 py-1 text-[10px] font-medium ${isLight ? "bg-zinc-600/40 text-zinc-800" : "bg-black/40 text-white/95"}`}
@@ -415,19 +773,6 @@ function WorkIntervalCard({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPlayFromHere();
-              }}
-              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-primary-500/30 ${mutedClass}`}
-              aria-label="Start from this interval"
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -455,9 +800,22 @@ function WorkIntervalCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                onPlayFromHere();
+              }}
+              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 ${mutedClass}`}
+              aria-label="Start from this interval"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
                 onDelete();
               }}
-              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-red-500/30 ${mutedClass}`}
+              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 ${mutedClass}`}
               aria-label="Delete"
             >
               <svg
@@ -470,7 +828,7 @@ function WorkIntervalCard({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
             </button>
@@ -781,64 +1139,133 @@ function RestIntervalCard({
             </div>
             {!expanded && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdate({
-                      voice: {
-                        ...interval.voice,
-                        mute: !interval.voice?.mute,
-                      },
-                    });
-                  }}
-                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    isLight
-                      ? interval.voice?.mute
-                        ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
-                        : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
-                      : interval.voice?.mute
-                        ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
-                        : "bg-black/35 text-white hover:bg-black/45"
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate({
+                        voice: {
+                          ...interval.voice,
+                          mute: !interval.voice?.mute,
+                        },
+                      });
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      isLight
+                        ? interval.voice?.mute
+                          ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                          : "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                        : interval.voice?.mute
+                          ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                          : "bg-black/35 text-white hover:bg-black/45"
+                    }`}
+                  >
+                    Voice {interval.voice?.mute ? "Off" : "On"}
+                  </button>
+                  {!interval.voice?.mute && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({
+                            voice: {
+                              ...interval.voice,
+                              announceStart: !(interval.voice?.announceStart ?? true),
+                            },
+                          });
+                        }}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          isLight
+                            ? (interval.voice?.announceStart ?? true)
+                              ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                              : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                            : (interval.voice?.announceStart ?? true)
+                              ? "bg-black/35 text-white hover:bg-black/45"
+                              : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        }`}
+                      >
+                        Start {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({
+                            voice: {
+                              ...interval.voice,
+                              announceHalfway: !(interval.voice?.announceHalfway ?? false),
+                            },
+                          });
+                        }}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          isLight
+                            ? (interval.voice?.announceHalfway ?? false)
+                              ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                              : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                            : (interval.voice?.announceHalfway ?? false)
+                              ? "bg-black/35 text-white hover:bg-black/45"
+                              : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        }`}
+                      >
+                        Halfway {(interval.voice?.announceHalfway ?? false) ? "On" : "Off"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({
+                            voice: {
+                              ...interval.voice,
+                              finalCountdownSeconds:
+                                (interval.voice?.finalCountdownSeconds ?? 3) > 0 ? 0 : 3,
+                            },
+                          });
+                        }}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          isLight
+                            ? (interval.voice?.finalCountdownSeconds ?? 3) > 0
+                              ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                              : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                            : (interval.voice?.finalCountdownSeconds ?? 3) > 0
+                              ? "bg-black/35 text-white hover:bg-black/45"
+                              : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                        }`}
+                      >
+                        End {((interval.voice?.finalCountdownSeconds ?? 3) > 0) ? "On" : "Off"}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div
+                  className={`flex items-center gap-1.5 border-l pl-2 ${
+                    isLight ? "border-zinc-400/50" : "border-white/30"
                   }`}
                 >
-                  Voice {interval.voice?.mute ? "Off" : "On"}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdate({ beep: !interval.beep });
-                  }}
-                  className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    isLight
-                      ? interval.beep
-                        ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
-                        : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
-                      : interval.beep
-                        ? "bg-black/35 text-white hover:bg-black/45"
-                        : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
-                  }`}
-                >
-                  Beep {interval.beep ? (interval.beepSound ?? "beep") : "Off"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate({ beep: !interval.beep });
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      isLight
+                        ? interval.beep
+                          ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
+                          : "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
+                        : interval.beep
+                          ? "bg-black/35 text-white hover:bg-black/45"
+                          : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
+                    }`}
+                  >
+                    Beep {interval.beep ? (interval.beepSound ?? "beep") : "Off"}
+                  </button>
+                </div>
               </div>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPlayFromHere();
-              }}
-              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-primary-500/30 ${mutedClass}`}
-              aria-label="Start from this interval"
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -866,9 +1293,22 @@ function RestIntervalCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                onPlayFromHere();
+              }}
+              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 ${mutedClass}`}
+              aria-label="Start from this interval"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
                 onDelete();
               }}
-              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-red-500/30 ${mutedClass}`}
+              className={`cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 ${mutedClass}`}
               aria-label="Delete"
             >
               <svg
@@ -881,7 +1321,7 @@ function RestIntervalCard({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
             </button>
@@ -1095,8 +1535,6 @@ function LooperIntervalCard({
   onUpdate,
 }: LooperIntervalCardProps) {
   const repeatCount = Math.max(2, interval.repeatCount);
-  const min = 2;
-  const max = 20;
   const looperColor = getLooperColor(interval.id, intervals);
 
   if (isPlaying) {
@@ -1107,55 +1545,62 @@ function LooperIntervalCard({
     const mid = h / 2;
     return (
       <div
-        className={`flex w-full items-center gap-2 py-2 transition-opacity ${looperProgress ? "" : "opacity-70"}`}
+        className={`flex w-full flex-col gap-1 py-2 transition-opacity ${looperProgress ? "" : "opacity-70"}`}
         style={{ color: looperColor }}
       >
-        <svg
-          width={w}
-          height={h}
-          viewBox={`0 0 ${w} ${h}`}
-          className="shrink-0"
-          aria-hidden
-        >
-          <path
-            d={`M ${r} 0 L ${r} ${mid - r} Q ${r} ${mid} ${r + r} ${mid} L ${w} ${mid}`}
-            fill="none"
-            stroke={looperColor}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span className="font-display shrink-0 text-sm font-semibold">
-          Repeat
-        </span>
-        <div
-          className="h-0.5 flex-1 shrink self-center"
-          style={{ backgroundColor: looperColor, minWidth: 8 }}
-        />
-        {looperProgress ? (
-          <span className="shrink-0 text-sm font-medium">
-            {looperProgress.remaining} of {looperProgress.total} left
+        <div className="flex w-full items-center gap-2">
+          <svg
+            width={w}
+            height={h}
+            viewBox={`0 0 ${w} ${h}`}
+            className="shrink-0"
+            aria-hidden
+          >
+            <path
+              d={`M ${r} 0 L ${r} ${mid - r} Q ${r} ${mid} ${r + r} ${mid} L ${w} ${mid}`}
+              fill="none"
+              stroke={looperColor}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="font-display shrink-0 text-sm font-semibold">
+            Repeat
           </span>
-        ) : (
-          <span className="shrink-0 text-sm font-medium opacity-70">—</span>
-        )}
-        <svg
-          width={w}
-          height={h}
-          viewBox={`0 0 ${w} ${h}`}
-          className="shrink-0"
-          aria-hidden
-        >
-          <path
-            d={`M 0 ${mid} L ${w - r * 2} ${mid} Q ${w - r} ${mid} ${w - r} 0`}
-            fill="none"
-            stroke={looperColor}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <div
+            className="h-0.5 flex-1 shrink self-center"
+            style={{ backgroundColor: looperColor, minWidth: 8 }}
           />
-        </svg>
+          {looperProgress ? (
+            <span className="shrink-0 text-sm font-medium">
+              {looperProgress.remaining} of {looperProgress.total} left
+            </span>
+          ) : (
+            <span className="shrink-0 text-sm font-medium opacity-70">—</span>
+          )}
+          <svg
+            width={w}
+            height={h}
+            viewBox={`0 0 ${w} ${h}`}
+            className="shrink-0"
+            aria-hidden
+          >
+            <path
+              d={`M 0 ${mid} L ${w - r * 2} ${mid} Q ${w - r} ${mid} ${w - r} 0`}
+              fill="none"
+              stroke={looperColor}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <div className="text-center text-base font-semibold text-white drop-shadow-sm">
+          {looperProgress
+            ? `Repeat ${looperProgress.iteration} / ${looperProgress.total}`
+            : `Repeat — / ${repeatCount}`}
+        </div>
       </div>
     );
   }
@@ -1167,10 +1612,10 @@ function LooperIntervalCard({
       data-interactive
       onClick={onSelect}
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
-      className={`group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 shadow-md transition-all duration-200 ${
+      className={`group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 shadow-xl transition-all duration-200 ${
         isSelected
           ? "border-amber-400 md:ring-2 md:ring-amber-400 md:ring-offset-2 dark:border-amber-400 dark:md:ring-offset-zinc-950"
-          : "border-transparent"
+          : "border-white/50 shadow-black/20 dark:border-white/40"
       }`}
       style={{ backgroundColor: looperColor }}
     >
@@ -1188,7 +1633,7 @@ function LooperIntervalCard({
                 e.stopPropagation();
                 onPlayFromHere();
               }}
-              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-primary-500/30 text-white/90"
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 text-white/90"
               aria-label="Start from this interval"
             >
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
@@ -1199,34 +1644,9 @@ function LooperIntervalCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onUpdate({ repeatCount: Math.max(min, repeatCount - 1) });
-              }}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/20 text-white transition-colors hover:bg-white/30"
-              aria-label="Decrease repeat count"
-            >
-              −
-            </button>
-            <span className="min-w-[2rem] text-center text-sm font-semibold text-white">
-              {repeatCount}
-            </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdate({ repeatCount: Math.min(max, repeatCount + 1) });
-              }}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/20 text-white transition-colors hover:bg-white/30"
-              aria-label="Increase repeat count"
-            >
-              +
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
                 onDelete();
               }}
-              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-red-500/30 text-white/80"
+              className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-white/20 text-white/80"
               aria-label="Delete"
             >
               <svg
@@ -1239,16 +1659,28 @@ function LooperIntervalCard({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
             </button>
           </div>
         </div>
         <p className="px-3 text-xs text-white/80">
-          Repeats everything after the previous looper (or start) this many
-          times
+          Repeats the block above (drag handle to adjust) this many times
         </p>
+        <div
+          className={`flex w-full items-center justify-center py-1 rounded-lg text-white/80`}
+        >
+          <DurationInput
+            value={repeatCount}
+            onChange={(v) => onUpdate({ repeatCount: v })}
+            min={2}
+            max={20}
+            containerClassName="bg-white/20 min-h-[2.75rem] md:min-h-[3rem]"
+            inputClassName="text-white"
+            suffixClassName="text-white"
+          />
+        </div>
       </div>
     </div>
   );
@@ -1266,15 +1698,47 @@ function AddButtonWithPopover({
   label: string;
 }) {
   const [showPopover, setShowPopover] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const updatePosition = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.top - 8,
+        left: rect.left + rect.width / 2,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (showPopover && typeof window !== "undefined") {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }
+  }, [showPopover]);
+
   return (
     <div
       className="relative"
-      onMouseEnter={() => setShowPopover(true)}
+      onMouseEnter={() => {
+        setShowPopover(true);
+        updatePosition();
+      }}
       onMouseLeave={() => setShowPopover(false)}
-      onFocus={() => setShowPopover(true)}
+      onFocus={() => {
+        setShowPopover(true);
+        updatePosition();
+      }}
       onBlur={() => setShowPopover(false)}
     >
       <button
+        ref={buttonRef}
         type="button"
         onClick={onClick}
         className={className}
@@ -1282,12 +1746,103 @@ function AddButtonWithPopover({
       >
         {icon}
       </button>
-      {showPopover && (
-        <div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-zinc-700">
-          {label}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-zinc-800 dark:border-t-zinc-700" />
-        </div>
-      )}
+      {showPopover &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed z-[200] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-zinc-700"
+            style={{ top: position.top, left: position.left }}
+          >
+            {label}
+            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-zinc-800 dark:border-t-zinc-700" />
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+function LooperBlockHandle({
+  looper,
+  intervals,
+  extendableIds,
+  currentBlock,
+  onUpdate,
+  looperColor,
+}: {
+  looper: LooperInterval;
+  intervals: Interval[];
+  extendableIds: string[];
+  currentBlock: string[];
+  onUpdate: (wrapIntervalIds: string[]) => void;
+  looperColor: string;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const handleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onPointerMove = (e: PointerEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const cardEl = el?.closest("[data-interval-id]");
+      const id = cardEl?.getAttribute("data-interval-id");
+      if (id && extendableIds.includes(id)) {
+        const idx = extendableIds.indexOf(id);
+        const newBlock = extendableIds.slice(idx);
+        if (JSON.stringify(newBlock) !== JSON.stringify(currentBlock)) {
+          onUpdate(newBlock);
+        }
+      }
+    };
+
+    const onPointerUp = () => setIsDragging(false);
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging, extendableIds, currentBlock, onUpdate]);
+
+  return (
+    <div
+      ref={handleRef}
+      role="button"
+      tabIndex={0}
+      data-interactive
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        setIsDragging(true);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+        }
+      }}
+      className={`flex cursor-ns-resize items-center justify-center py-1.5 transition-opacity hover:opacity-100 ${
+        isDragging ? "opacity-100" : "opacity-80"
+      }`}
+      style={{ backgroundColor: looperColor }}
+      aria-label="Drag to extend or shrink repeat block"
+      title="Drag up to include more intervals, drag down to exclude"
+    >
+      <svg
+        className="h-4 w-4 text-white/90"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <circle cx="12" cy="6" r="1.5" />
+        <circle cx="12" cy="12" r="1.5" />
+        <circle cx="12" cy="18" r="1.5" />
+      </svg>
     </div>
   );
 }
@@ -1295,21 +1850,50 @@ function AddButtonWithPopover({
 function Connector({
   aboveId,
   belowId,
+  showGetReadyButton,
 }: {
-  aboveId: string;
+  aboveId: string | null;
   belowId?: string | null;
+  showGetReadyButton?: boolean;
 }) {
   const { state: player } = usePlayer();
   const { previewMode } = usePreviewMode();
-  const { state, addWorkAfter, addRestAfter, addRestBetween, addLooperAfter } =
-    useWorkout();
+  const {
+    addWorkAfter,
+    addRestAfter,
+    addRestBetween,
+    addPrepAfter,
+    addLooperAfter,
+  } = useWorkout();
   const isInPlaybackMode = player.isRunning || player.isPaused;
   if (isInPlaybackMode || previewMode) return null;
   return (
     <div className="flex justify-center py-3">
       <div className="flex gap-2">
+        {showGetReadyButton && (
+          <AddButtonWithPopover
+            onClick={() => addPrepAfter(null)}
+            className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600 shadow-sm transition-all hover:scale-105 hover:bg-teal-100 hover:shadow-md dark:bg-teal-950/50 dark:text-teal-400 dark:hover:bg-teal-900/50"
+            icon={
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            }
+            label="Get ready countdown"
+          />
+        )}
         <AddButtonWithPopover
-          onClick={() => addWorkAfter(aboveId)}
+          onClick={() => addWorkAfter(aboveId ?? null)}
           className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600 shadow-sm transition-all hover:scale-105 hover:bg-sky-100 hover:shadow-md dark:bg-sky-950/50 dark:text-sky-400 dark:hover:bg-sky-900/50"
           icon={
             <svg
@@ -1330,7 +1914,9 @@ function Connector({
         />
         <AddButtonWithPopover
           onClick={() =>
-            belowId ? addRestBetween(belowId) : addRestAfter(aboveId)
+            belowId && aboveId
+              ? addRestBetween(belowId)
+              : addRestAfter(aboveId ?? null)
           }
           className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600 shadow-sm transition-all hover:scale-105 hover:bg-violet-100 hover:shadow-md dark:bg-violet-950/50 dark:text-violet-400 dark:hover:bg-violet-900/50"
           icon={
@@ -1351,7 +1937,7 @@ function Connector({
           label="Rest"
         />
         <AddButtonWithPopover
-          onClick={() => addLooperAfter(aboveId)}
+          onClick={() => addLooperAfter(aboveId ?? null)}
           className="cursor-pointer flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 shadow-sm transition-all hover:scale-105 hover:bg-amber-100 hover:shadow-md dark:bg-amber-950/50 dark:text-amber-400 dark:hover:bg-amber-900/50"
           icon={
             <svg
@@ -1382,6 +1968,7 @@ export function IntervalEditorList() {
     deleteInterval,
     addWorkAfter,
     updateInterval,
+    updateLooperBlock,
   } = useWorkout();
   const { state: player, play } = usePlayer();
   const { previewMode } = usePreviewMode();
@@ -1451,20 +2038,189 @@ export function IntervalEditorList() {
     if (startId) play(state.workout, startId);
   };
 
+  const renderGroups: Array<
+    | { type: "looper"; start: number; end: number; looper: LooperInterval }
+    | { type: "standalone"; index: number }
+  > = [];
+  for (let i = 0; i < intervals.length; i++) {
+    const interval = intervals[i];
+    if (
+      (interval.type === "work" || interval.type === "rest") &&
+      getLooperIfTopOfBlock(intervals, interval.id)
+    ) {
+      const topLooper = getLooperIfTopOfBlock(intervals, interval.id)!;
+      const looperIdx = intervals.findIndex((x) => x.id === topLooper.id);
+      renderGroups.push({
+        type: "looper",
+        start: i,
+        end: looperIdx,
+        looper: topLooper,
+      });
+      i = looperIdx;
+    } else if (
+      (interval.type === "work" || interval.type === "rest") &&
+      getLooperForInterval(intervals, interval.id)
+    ) {
+      continue;
+    } else {
+      renderGroups.push({ type: "standalone", index: i });
+    }
+  }
+
   return (
     <div className={`flex flex-col ${showCompactView ? "gap-2.5" : "gap-1"}`}>
-      {!showCompactView && <PrepEnabledRow />}
-      {intervals.map((interval, index) => {
+      {!showCompactView &&
+        intervals.length > 0 &&
+        intervals[0].type !== "prep" && (
+          <Connector
+            aboveId={null}
+            belowId={intervals[0].id}
+            showGetReadyButton={!intervals.some((i) => i.type === "prep")}
+          />
+        )}
+      {renderGroups.map((group) => {
+        if (group.type === "looper") {
+          const looperColor = getLooperColor(group.looper.id, intervals);
+          return (
+            <div key={group.looper.id} className="flex flex-col gap-1">
+              <div
+                className="flex flex-col gap-1 rounded-2xl p-2"
+                style={{ backgroundColor: looperColor }}
+              >
+              {!showCompactView && (
+                <LooperBlockHandle
+                  looper={group.looper}
+                  intervals={intervals}
+                  extendableIds={getLooperExtendableIds(
+                    intervals,
+                    group.looper.id,
+                  )}
+                  currentBlock={
+                    group.looper.wrapIntervalIds ??
+                    getLooperBlock(intervals, group.looper).map((x) => x.id)
+                  }
+                  onUpdate={(ids) =>
+                    updateLooperBlock(group.looper.id, ids)
+                  }
+                  looperColor={looperColor}
+                />
+              )}
+              {Array.from(
+                { length: group.end - group.start + 1 },
+                (_, k) => group.start + k,
+              ).map((index) => {
+                const interval = intervals[index];
+                const isSelected = state.selectedIntervalId === interval.id;
+                const isCurrent =
+                  isInPlaybackMode &&
+                  (interval.type === "work" ||
+                    interval.type === "rest" ||
+                    interval.type === "prep") &&
+                  currentPlaybackInterval?.id === interval.id;
+
+                return (
+                  <div
+                    key={interval.id}
+                    id={`interval-${interval.id}`}
+                    data-interval-id={interval.id}
+                    className="flex flex-col"
+                  >
+                    {isWork(interval) ? (
+                      <WorkIntervalCard
+                        interval={interval}
+                        isSelected={isSelected}
+                        isCurrent={isCurrent}
+                        isPlaying={showCompactView}
+                        looperBorderColor={getLooperBorderColor(
+                          interval.id,
+                          intervals,
+                        )}
+                        onSelect={() => handleCardSelect(interval.id)}
+                        onPlayFromHere={() =>
+                          handlePlayFromCard(interval.id)
+                        }
+                        onDelete={() => deleteInterval(interval.id)}
+                        onUpdate={(p) => updateInterval(interval.id, p)}
+                      />
+                    ) : isLooper(interval) ? (
+                      <LooperIntervalCard
+                        interval={interval}
+                        isSelected={isSelected}
+                        isCurrent={isCurrent}
+                        isPlaying={showCompactView}
+                        intervals={intervals}
+                        looperProgress={looperProgressMap.get(interval.id)}
+                        onSelect={() => handleCardSelect(interval.id)}
+                        onPlayFromHere={() =>
+                          handlePlayFromCard(interval.id)
+                        }
+                        onDelete={() => deleteInterval(interval.id)}
+                        onUpdate={(p) => updateInterval(interval.id, p)}
+                      />
+                    ) : isPrep(interval) ? (
+                      <PrepIntervalCard
+                        interval={interval}
+                        isSelected={isSelected}
+                        isCurrent={isCurrent}
+                        isPlaying={showCompactView}
+                        onSelect={() => handleCardSelect(interval.id)}
+                        onPlayFromHere={() =>
+                          handlePlayFromCard(interval.id)
+                        }
+                        onDelete={() => deleteInterval(interval.id)}
+                        onUpdate={(p) => updateInterval(interval.id, p)}
+                      />
+                    ) : (
+                      <RestIntervalCard
+                        interval={interval}
+                        isSelected={isSelected}
+                        isCurrent={isCurrent}
+                        isPlaying={showCompactView}
+                        looperBorderColor={getLooperBorderColor(
+                          interval.id,
+                          intervals,
+                        )}
+                        onSelect={() => handleCardSelect(interval.id)}
+                        onPlayFromHere={() =>
+                          handlePlayFromCard(interval.id)
+                        }
+                        onDelete={() => deleteInterval(interval.id)}
+                        onUpdate={(p) => updateInterval(interval.id, p)}
+                      />
+                    )}
+                    {!showCompactView && index < group.end && (
+                      <Connector
+                        aboveId={interval.id}
+                        belowId={intervals[index + 1].id}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+              </div>
+              {!showCompactView && (
+                <Connector
+                  aboveId={intervals[group.end].id}
+                  belowId={intervals[group.end + 1]?.id ?? undefined}
+                />
+              )}
+            </div>
+          );
+        }
+        const interval = intervals[group.index];
         const isSelected = state.selectedIntervalId === interval.id;
         const isCurrent =
           isInPlaybackMode &&
-          (interval.type === "work" || interval.type === "rest") &&
+          (interval.type === "work" ||
+            interval.type === "rest" ||
+            interval.type === "prep") &&
           currentPlaybackInterval?.id === interval.id;
 
         return (
           <div
             key={interval.id}
             id={`interval-${interval.id}`}
+            data-interval-id={interval.id}
             className="flex flex-col"
           >
             {isWork(interval) ? (
@@ -1473,7 +2229,10 @@ export function IntervalEditorList() {
                 isSelected={isSelected}
                 isCurrent={isCurrent}
                 isPlaying={showCompactView}
-                looperBorderColor={getLooperBorderColor(interval.id, intervals)}
+                looperBorderColor={getLooperBorderColor(
+                  interval.id,
+                  intervals,
+                )}
                 onSelect={() => handleCardSelect(interval.id)}
                 onPlayFromHere={() => handlePlayFromCard(interval.id)}
                 onDelete={() => deleteInterval(interval.id)}
@@ -1492,13 +2251,27 @@ export function IntervalEditorList() {
                 onDelete={() => deleteInterval(interval.id)}
                 onUpdate={(p) => updateInterval(interval.id, p)}
               />
+            ) : isPrep(interval) ? (
+              <PrepIntervalCard
+                interval={interval}
+                isSelected={isSelected}
+                isCurrent={isCurrent}
+                isPlaying={showCompactView}
+                onSelect={() => handleCardSelect(interval.id)}
+                onPlayFromHere={() => handlePlayFromCard(interval.id)}
+                onDelete={() => deleteInterval(interval.id)}
+                onUpdate={(p) => updateInterval(interval.id, p)}
+              />
             ) : (
               <RestIntervalCard
                 interval={interval}
                 isSelected={isSelected}
                 isCurrent={isCurrent}
                 isPlaying={showCompactView}
-                looperBorderColor={getLooperBorderColor(interval.id, intervals)}
+                looperBorderColor={getLooperBorderColor(
+                  interval.id,
+                  intervals,
+                )}
                 onSelect={() => handleCardSelect(interval.id)}
                 onPlayFromHere={() => handlePlayFromCard(interval.id)}
                 onDelete={() => deleteInterval(interval.id)}
@@ -1506,10 +2279,10 @@ export function IntervalEditorList() {
               />
             )}
             {!showCompactView &&
-              (index < intervals.length - 1 ? (
+              (group.index < intervals.length - 1 ? (
                 <Connector
                   aboveId={interval.id}
-                  belowId={intervals[index + 1].id}
+                  belowId={intervals[group.index + 1].id}
                 />
               ) : (
                 <Connector aboveId={interval.id} />
@@ -1517,14 +2290,12 @@ export function IntervalEditorList() {
           </div>
         );
       })}
-      {isInPlaybackMode && sets > 1 && (
+      {showCompactView && sets > 1 && (
         <div className="rounded-xl border border-zinc-300 bg-zinc-200/80 px-4 py-2.5 dark:border-zinc-600 dark:bg-zinc-800/80">
-          <div className="flex w-full items-center justify-between gap-3">
+          <div className="flex w-full items-center justify-center">
             <span className="font-display text-sm font-semibold text-zinc-700 dark:text-zinc-400">
-              Circuit
-            </span>
-            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-500">
-              {sets - player.currentSetIndex} of {sets} left
+              Circuit repeat{" "}
+              {(isInPlaybackMode ? player.currentSetIndex : 0) + 1} / {sets}
             </span>
           </div>
         </div>

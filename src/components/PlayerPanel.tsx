@@ -3,9 +3,8 @@
 import { useRef, useLayoutEffect } from "react";
 import { FaPlay, FaPause, FaUndo } from "react-icons/fa";
 import { useWorkout } from "@/state/workout-context";
-import { usePlayer, PREP_DURATION_SECONDS } from "@/state/player-context";
-import { usePrepEnabled } from "@/state/prep-enabled-context";
-import { WorkInterval, RestInterval, expandIntervals } from "@/domain/workout";
+import { usePlayer } from "@/state/player-context";
+import { WorkInterval, RestInterval, PrepInterval, expandIntervals } from "@/domain/workout";
 import { resumeAudioContext } from "@/voice/BeepEngine";
 
 function getLuminance(hex: string): number {
@@ -46,7 +45,7 @@ function NextIntervalInfo({
   variant,
   size = "default",
 }: {
-  interval: WorkInterval | RestInterval | null;
+  interval: WorkInterval | RestInterval | PrepInterval | null;
   variant: TextVariant;
   size?: "default" | "large";
 }) {
@@ -54,17 +53,22 @@ function NextIntervalInfo({
   if (!interval) {
     return (
       <div
-        className={`font-medium ${size === "large" ? "text-base" : "text-sm"} ${t.muted}`}
+        className={`text-center font-medium ${size === "large" ? "text-base" : "text-sm"} ${t.muted}`}
       >
         Coming next: —
       </div>
     );
   }
 
-  const title = interval.type === "work" ? interval.title || "Work" : "Rest";
+  const title =
+    interval.type === "work"
+      ? (interval as WorkInterval).title || "Work"
+      : interval.type === "prep"
+        ? "Get ready"
+        : "Rest";
 
   return (
-    <div className="min-w-0 break-words">
+    <div className="min-w-0 break-words text-center">
       <div
         className={`font-semibold uppercase tracking-wider ${size === "large" ? "text-sm" : "text-xs"} ${t.muted}`}
       >
@@ -88,7 +92,6 @@ function InnerPlayer({
 }) {
   const { state: workoutState } = useWorkout();
   const { state: player, play, pause, reset } = usePlayer();
-  const { prepEnabled } = usePrepEnabled();
 
   const intervals = workoutState.workout.intervals;
   const playbackIntervals = expandIntervals(intervals);
@@ -99,11 +102,22 @@ function InnerPlayer({
   const isLastInterval = effectiveIndex === playbackIntervals.length - 1;
   const hasMoreSets =
     isInPlaybackMode && sets > 1 && player.currentSetIndex < sets - 1;
-  const inPreparation = player.isRunning && player.preparationRemaining > 0;
+  const inPreparation =
+    player.isRunning &&
+    current &&
+    "type" in current &&
+    current.type === "prep";
+  const firstInterval = playbackIntervals[0];
   const showGetReadyAsDefault =
-    !isInPlaybackMode && prepEnabled && playbackIntervals.length > 0;
-  const next = showGetReadyAsDefault
-    ? (playbackIntervals[0] ?? null)
+    !isInPlaybackMode &&
+    playbackIntervals.length > 0 &&
+    firstInterval &&
+    "type" in firstInterval &&
+    firstInterval.type === "prep";
+  const next = showGetReadyAsDefault || inPreparation
+    ? (firstInterval && "type" in firstInterval && firstInterval.type === "prep"
+        ? playbackIntervals[1] ?? null
+        : firstInterval ?? null)
     : effectiveIndex >= 0 && effectiveIndex < playbackIntervals.length - 1
       ? playbackIntervals[effectiveIndex + 1]
       : isLastInterval && hasMoreSets
@@ -111,17 +125,18 @@ function InnerPlayer({
         : null;
 
   const showingGetReady = inPreparation || showGetReadyAsDefault;
+  const prepTotal =
+    (showGetReadyAsDefault ? firstInterval : inPreparation ? current : null)
+      ?.durationSeconds ?? 7;
   const currentTotal = showingGetReady
-    ? PREP_DURATION_SECONDS
+    ? prepTotal
     : (current?.durationSeconds ?? 0);
   const displaySeconds = isInPlaybackMode
-    ? inPreparation
-      ? player.preparationRemaining
-      : player.secondsRemainingInInterval
+    ? player.secondsRemainingInInterval
     : currentTotal;
   const elapsed = isInPlaybackMode
     ? inPreparation
-      ? PREP_DURATION_SECONDS - player.preparationRemaining
+      ? prepTotal - player.secondsRemainingInInterval
       : currentTotal > 0
         ? Math.max(0, currentTotal - player.secondsRemainingInInterval)
         : 0
@@ -190,17 +205,17 @@ function InnerPlayer({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4">
           <div
-            className={`font-display text-7xl font-extrabold tabular-nums tracking-tight md:text-8xl ${t.primary}`}
+            className={`font-display font-extrabold tabular-nums tracking-tight text-8xl sm:text-9xl md:text-8xl ${t.primary}`}
           >
             {formatSeconds(displaySeconds || 0)}
           </div>
-          <div className={`text-sm font-medium ${t.muted}`}>
+          <div className={`text-base font-medium sm:text-lg ${t.muted}`}>
             / {formatSeconds(currentTotal)}
           </div>
           <div
-            className={`h-2.5 w-full max-w-sm overflow-hidden rounded-full ${t.progressBg}`}
+            className={`h-3 w-full max-w-sm overflow-hidden rounded-full ${t.progressBg}`}
           >
             <div
               className={`h-full rounded-full bg-primary-200 dark:bg-primary-400 ${instantTransition ? "transition-none" : "transition-[width] duration-1000 ease-linear"}`}
@@ -209,7 +224,7 @@ function InnerPlayer({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center pb-2 pt-4 md:items-end md:pb-4">
+        <div className="flex shrink-0 flex-col items-center pb-2 pt-4 md:pb-4">
           <NextIntervalInfo interval={next} variant={variant} size="large" />
         </div>
       </div>
@@ -217,8 +232,8 @@ function InnerPlayer({
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col justify-center gap-6">
-      <div className="min-w-0 space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col md:h-full">
+      <div className="min-w-0 shrink-0 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div
             className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${t.muted}`}
@@ -247,8 +262,8 @@ function InnerPlayer({
         <div className={`text-sm font-medium leading-relaxed ${t.mutedStrong}`}>
           {player.isRunning
             ? inPreparation
-              ? current?.type === "work"
-                ? `${current.title || "Work"} starts in ${player.preparationRemaining}...`
+              ? next && "type" in next && next.type === "work"
+                ? `${(next as WorkInterval).title || "Work"} starts in ${player.secondsRemainingInInterval}...`
                 : "Starting in a moment..."
               : current
                 ? current.type === "work"
@@ -269,19 +284,19 @@ function InnerPlayer({
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-baseline justify-between gap-2">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4">
+        <div className="flex flex-col items-center gap-2">
           <div
-            className={`font-display text-5xl font-extrabold tabular-nums tracking-tight md:text-6xl ${t.primary}`}
+            className={`font-display text-6xl font-extrabold tabular-nums tracking-tight md:text-7xl ${t.primary}`}
           >
             {formatSeconds(displaySeconds || 0)}
           </div>
-          <div className={`text-xs font-medium ${t.muted}`}>
+          <div className={`text-sm font-medium md:text-base ${t.muted}`}>
             / {formatSeconds(currentTotal)}
           </div>
         </div>
         <div
-          className={`h-3 w-full overflow-hidden rounded-full ${t.progressBg}`}
+          className={`h-3 w-full max-w-md overflow-hidden rounded-full ${t.progressBg}`}
         >
           <div
             className={`h-full rounded-full bg-primary-200 dark:bg-primary-400 ${instantTransition ? "transition-none" : "transition-[width] duration-1000 ease-linear"}`}
@@ -291,54 +306,52 @@ function InnerPlayer({
         <NextIntervalInfo interval={next} variant={variant} />
       </div>
 
-      {!hideControls && (
-        <div className="flex items-center justify-between gap-4 pt-2">
-          <button
-            type="button"
-            onClick={() => reset(workoutState.workout)}
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-400/60 bg-zinc-200/90 px-8 py-3.5 text-base font-bold uppercase tracking-wider text-zinc-700 transition-colors hover:bg-zinc-300/90 dark:border-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-200 dark:hover:bg-zinc-600/80"
-          >
-            <FaUndo className="h-4 w-4" />
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={
-              player.isRunning
-                ? pause
-                : async () => {
-                    await resumeAudioContext();
-                    play(workoutState.workout);
-                  }
-            }
-            disabled={playbackIntervals.length === 0}
-            aria-label={
-              player.isRunning
-                ? "Pause workout"
-                : player.isPaused
-                  ? "Resume workout"
-                  : "Start workout"
-            }
-            className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-base font-bold uppercase tracking-wider shadow-lg transition-all disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-white/60 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400 ${
-              player.isRunning
-                ? "bg-amber-500 text-white hover:bg-amber-400 shadow-xl dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500"
-                : "bg-white text-primary-600 hover:bg-white/95 hover:shadow-xl dark:bg-primary-500 dark:text-white dark:hover:bg-primary-400"
-            }`}
-          >
-            {player.isRunning ? (
-              <>
-                <FaPause className="h-4 w-4" />
-                Pause
-              </>
-            ) : (
-              <>
-                <FaPlay className="h-4 w-4" />
-                Start
-              </>
-            )}
-          </button>
-        </div>
-      )}
+      <div className="mt-auto flex shrink-0 items-center justify-between gap-4 pt-4">
+        <button
+          type="button"
+          onClick={() => reset(workoutState.workout)}
+          className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-400/60 bg-zinc-200/90 px-8 py-3.5 text-base font-bold uppercase tracking-wider text-zinc-700 transition-colors hover:bg-zinc-300/90 dark:border-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-200 dark:hover:bg-zinc-600/80"
+        >
+          <FaUndo className="h-4 w-4" />
+          Reset
+        </button>
+        <button
+          type="button"
+          onClick={
+            player.isRunning
+              ? pause
+              : async () => {
+                  await resumeAudioContext();
+                  play(workoutState.workout);
+                }
+          }
+          disabled={playbackIntervals.length === 0}
+          aria-label={
+            player.isRunning
+              ? "Pause workout"
+              : player.isPaused
+                ? "Resume workout"
+                : "Start workout"
+          }
+          className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-base font-bold uppercase tracking-wider shadow-lg transition-all disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-white/60 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400 ${
+            player.isRunning
+              ? "bg-amber-500 text-white hover:bg-amber-400 shadow-xl dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500"
+              : "bg-white text-primary-600 hover:bg-white/95 hover:shadow-xl dark:bg-primary-500 dark:text-white dark:hover:bg-primary-400"
+          }`}
+        >
+          {player.isRunning ? (
+            <>
+              <FaPause className="h-4 w-4" />
+              Pause
+            </>
+          ) : (
+            <>
+              <FaPlay className="h-4 w-4" />
+              Start
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

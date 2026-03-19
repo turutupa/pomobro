@@ -1,7 +1,6 @@
 "use client";
 
 import { Workout, expandIntervals } from "@/domain/workout";
-import { usePrepEnabled } from "@/state/prep-enabled-context";
 import React, {
   createContext,
   useContext,
@@ -10,9 +9,6 @@ import React, {
   useReducer,
   useRef,
 } from "react";
-
-/** Duration of the "get ready" countdown in seconds. */
-export const PREP_DURATION_SECONDS = 7;
 
 function getPlaybackIntervals(workout: Workout) {
   return expandIntervals(workout.intervals);
@@ -26,8 +22,6 @@ interface PlayerState {
   /** 0-based set index. When sets is 1, always 0. */
   currentSetIndex: number;
   secondsRemainingInInterval: number;
-  /** 5–1 countdown before first interval; 0 when running. */
-  preparationRemaining: number;
   startedAt: number | null;
 }
 
@@ -37,7 +31,6 @@ type Action =
       type: "play";
       workout: Workout;
       startIntervalId?: string;
-      prepEnabled?: boolean;
     }
   | { type: "pause" }
   | { type: "tick"; workout: Workout }
@@ -47,7 +40,6 @@ const PlayerContext = createContext<
   | {
       state: PlayerState;
       dispatch: React.Dispatch<Action>;
-      prepEnabled: boolean;
     }
   | undefined
 >(undefined);
@@ -61,7 +53,6 @@ function initialState(workout: Workout): PlayerState {
     currentIndex: intervals.length > 0 ? 0 : -1,
     currentSetIndex: 0,
     secondsRemainingInInterval: first?.durationSeconds ?? 0,
-    preparationRemaining: 0,
     startedAt: null,
   };
 }
@@ -88,31 +79,17 @@ function reducer(state: PlayerState, action: Action): PlayerState {
             : state.currentIndex;
       const safeIdx = Math.max(0, Math.min(idx, intervals.length - 1));
       const target = intervals[safeIdx];
-      const isResuming = action.startIntervalId === undefined;
-      const atFullDuration =
-        (action.startIntervalId !== undefined ||
-          isStartingFresh ||
-          (state.currentIndex === safeIdx &&
-            state.secondsRemainingInInterval === target.durationSeconds)) &&
-        state.preparationRemaining === 0;
-      const skipPrep = action.startIntervalId !== undefined;
-      const prepCount =
-        !skipPrep && action.prepEnabled !== false
-          ? PREP_DURATION_SECONDS
-          : 0;
+      // When resuming from pause, keep remaining time; otherwise use current workout's duration
+      const secondsRemaining =
+        state.isPaused
+          ? state.secondsRemainingInInterval
+          : target.durationSeconds;
       return {
         ...state,
         currentIndex: safeIdx,
         currentSetIndex:
           action.startIntervalId !== undefined ? 0 : state.currentSetIndex,
-        secondsRemainingInInterval: isResuming
-          ? state.secondsRemainingInInterval
-          : target.durationSeconds,
-        preparationRemaining: atFullDuration
-          ? prepCount
-          : isResuming
-            ? state.preparationRemaining
-            : state.preparationRemaining,
+        secondsRemainingInInterval: secondsRemaining,
         isRunning: true,
         isPaused: false,
         startedAt: Date.now(),
@@ -124,7 +101,6 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         isRunning: false,
         isPaused: true,
         startedAt: null,
-        // Keep preparationRemaining so we can resume countdown
       };
     case "jumpTo": {
       const intervals = getPlaybackIntervals(action.workout);
@@ -136,7 +112,6 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         currentIndex: action.index,
         currentSetIndex: 0,
         secondsRemainingInInterval: intervals[action.index].durationSeconds,
-        preparationRemaining: 0,
         startedAt: null,
         isRunning: false,
         isPaused: false,
@@ -144,13 +119,6 @@ function reducer(state: PlayerState, action: Action): PlayerState {
     }
     case "tick": {
       if (!state.isRunning) return state;
-      // During preparation countdown, don't decrement interval time
-      if (state.preparationRemaining > 0) {
-        return {
-          ...state,
-          preparationRemaining: state.preparationRemaining - 1,
-        };
-      }
       const remaining = state.secondsRemainingInInterval - 1;
       if (remaining > 0) {
         return {
@@ -201,7 +169,6 @@ export function PlayerProvider({
   workout: Workout;
   children: React.ReactNode;
 }) {
-  const { prepEnabled } = usePrepEnabled();
   const [state, dispatch] = useReducer(reducer, workout, initialState);
   const workoutRef = useRef(workout);
   workoutRef.current = workout;
@@ -222,10 +189,7 @@ export function PlayerProvider({
     dispatch({ type: "reset", workout });
   }, [intervalIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const value = useMemo(
-    () => ({ state, dispatch, prepEnabled }),
-    [state, prepEnabled],
-  );
+  const value = useMemo(() => ({ state, dispatch }), [state]);
 
   return (
     <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
@@ -239,11 +203,10 @@ export function usePlayer() {
   }
 
   const { state, dispatch } = ctx;
-  const prepEnabled = ctx.prepEnabled ?? true;
 
   const controls = {
     play: (workout: Workout, startIntervalId?: string) =>
-      dispatch({ type: "play", workout, startIntervalId, prepEnabled }),
+      dispatch({ type: "play", workout, startIntervalId }),
     pause: () => dispatch({ type: "pause" }),
     reset: (workout: Workout) => dispatch({ type: "reset", workout }),
     jumpTo: (index: number, workout: Workout) =>

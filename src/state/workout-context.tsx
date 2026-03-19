@@ -8,9 +8,11 @@ import {
   addWorkIntervalAfter,
   addRestAfter,
   addRestBetween,
+  addPrepAfter as addPrepAfterDomain,
   addLooperAfter as addLooperAfterDomain,
   deleteInterval as deleteIntervalDomain,
   moveInterval as moveIntervalDomain,
+  updateLooperBlock as updateLooperBlockDomain,
   normalizeWorkout,
 } from "@/domain/workout";
 
@@ -25,12 +27,18 @@ type Action =
   | { type: "selectInterval"; id: string | null }
   | { type: "addWorkAfter"; afterId: string | null }
   | { type: "clearLastAddedIntervalId" }
-  | { type: "addRestAfter"; afterId: string }
+  | { type: "addRestAfter"; afterId: string | null }
   | { type: "addRestBetween"; beforeId: string }
-  | { type: "addLooperAfter"; afterId: string }
+  | { type: "addPrepAfter"; afterId: string | null }
+  | { type: "addLooperAfter"; afterId: string | null }
   | { type: "deleteInterval"; id: string }
   | { type: "moveInterval"; id: string; newIndex: number }
   | { type: "updateInterval"; id: string; patch: Partial<Interval> }
+  | {
+      type: "updateLooperBlock";
+      looperId: string;
+      wrapIntervalIds: string[];
+    }
   | { type: "updateMeta"; name?: string; description?: string; sets?: number };
 
 const WorkoutContext = createContext<
@@ -69,6 +77,16 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
       const workout = addRestBetween(state.workout, action.beforeId);
       return { ...state, workout };
     }
+    case "addPrepAfter": {
+      const workout = addPrepAfterDomain(state.workout, action.afterId);
+      const oldIds = new Set(state.workout.intervals.map((i) => i.id));
+      const newInterval = workout.intervals.find((i) => !oldIds.has(i.id));
+      return {
+        ...state,
+        workout,
+        lastAddedIntervalId: newInterval?.id ?? null,
+      };
+    }
     case "addLooperAfter": {
       const workout = addLooperAfterDomain(state.workout, action.afterId);
       return { ...state, workout };
@@ -99,6 +117,14 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
         ),
       };
       return { ...state, workout: normalizeWorkout(workout) };
+    }
+    case "updateLooperBlock": {
+      const workout = updateLooperBlockDomain(
+        state.workout,
+        action.looperId,
+        action.wrapIntervalIds,
+      );
+      return { ...state, workout };
     }
     case "updateMeta": {
       const workout: Workout = {
@@ -154,17 +180,21 @@ export function useWorkout() {
       dispatch({ type: "addWorkAfter", afterId }),
     clearLastAddedIntervalId: () =>
       dispatch({ type: "clearLastAddedIntervalId" }),
-    addRestAfter: (afterId: string) =>
+    addRestAfter: (afterId: string | null) =>
       dispatch({ type: "addRestAfter", afterId }),
     addRestBetween: (beforeId: string) =>
       dispatch({ type: "addRestBetween", beforeId }),
-    addLooperAfter: (afterId: string) =>
+    addPrepAfter: (afterId: string | null) =>
+      dispatch({ type: "addPrepAfter", afterId }),
+    addLooperAfter: (afterId: string | null) =>
       dispatch({ type: "addLooperAfter", afterId }),
     deleteInterval: (id: string) => dispatch({ type: "deleteInterval", id }),
     moveInterval: (id: string, newIndex: number) =>
       dispatch({ type: "moveInterval", id, newIndex }),
     updateInterval: (id: string, patch: Partial<Interval>) =>
       dispatch({ type: "updateInterval", id, patch }),
+    updateLooperBlock: (looperId: string, wrapIntervalIds: string[]) =>
+      dispatch({ type: "updateLooperBlock", looperId, wrapIntervalIds }),
     updateMeta: (name?: string, description?: string, sets?: number) =>
       dispatch({ type: "updateMeta", name, description, sets }),
   };

@@ -2,6 +2,7 @@
 
 import type {
   BeepSoundType,
+  PrepInterval,
   RestInterval,
   WorkInterval,
 } from "@/domain/workout";
@@ -17,10 +18,15 @@ function isWork(
   return interval.type === "work";
 }
 
-function getBeepSettings(interval: WorkInterval | RestInterval): {
-  enabled: boolean;
-  sound: BeepSoundType;
-} {
+function getBeepSettings(
+  interval: WorkInterval | RestInterval | PrepInterval,
+): { enabled: boolean; sound: BeepSoundType } {
+  if (interval.type === "prep") {
+    return {
+      enabled: !!interval.beep,
+      sound: interval.beepSound ?? "beep",
+    };
+  }
   const sound: BeepSoundType =
     (isWork(interval) ? interval.voice?.beepSound : interval.beepSound) ??
     "beep";
@@ -35,14 +41,13 @@ export function PlaybackBeepController() {
     remaining: 0,
     index: -1,
     running: false,
-    prepRemaining: 0,
   });
   const lastPlayedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const intervals = expandIntervals(workoutState.workout.intervals);
     const current = intervals[player.currentIndex] ?? null;
-    const { remaining, index, running, prepRemaining } = prevRef.current;
+    const { remaining, index, running } = prevRef.current;
     const rem = player.secondsRemainingInInterval;
     const currentTotal = current?.durationSeconds ?? 0;
     const sets = Math.max(1, workoutState.workout.sets ?? 1);
@@ -58,13 +63,9 @@ export function PlaybackBeepController() {
     if (workoutJustCompleted && lastPlayedRef.current !== "workout-complete") {
       lastPlayedRef.current = "workout-complete";
       const lastInterval = intervals[index];
-      if (lastInterval) {
-        const { enabled: endEnabled, sound: endSound } =
-          getBeepSettings(lastInterval);
-        if (endEnabled) {
-          playWorkoutCompleteBeeps(endSound);
-        }
-      }
+      const settings = lastInterval ? getBeepSettings(lastInterval) : null;
+      const sound = settings?.enabled ? settings.sound : "beep";
+      playWorkoutCompleteBeeps(sound);
     }
 
     if (!current) {
@@ -72,7 +73,6 @@ export function PlaybackBeepController() {
         remaining: rem,
         index: player.currentIndex,
         running: player.isRunning,
-        prepRemaining: player.preparationRemaining,
       };
       return;
     }
@@ -85,21 +85,16 @@ export function PlaybackBeepController() {
         remaining: rem,
         index: player.currentIndex,
         running: player.isRunning,
-        prepRemaining: player.preparationRemaining,
       };
       return;
     }
 
-    // Long beep when interval starts (from prep, from previous interval, or at full duration)
-    const fromPrep = prepRemaining > 0 && player.preparationRemaining === 0;
+    // Long beep when interval starts (from previous interval or at full duration)
     const fromPrevInterval = player.currentIndex > index;
-    const atIntervalStart =
-      player.preparationRemaining === 0 &&
-      currentTotal > 0 &&
-      rem === currentTotal;
+    const atIntervalStart = currentTotal > 0 && rem === currentTotal;
     const startKey = `start-${player.currentIndex}`;
     if (
-      (fromPrep || fromPrevInterval || atIntervalStart) &&
+      (fromPrevInterval || atIntervalStart) &&
       lastPlayedRef.current !== startKey
     ) {
       lastPlayedRef.current = startKey;
@@ -119,7 +114,6 @@ export function PlaybackBeepController() {
       remaining: rem,
       index: player.currentIndex,
       running: player.isRunning,
-      prepRemaining: player.preparationRemaining,
     };
   }, [
     workoutState.workout.intervals,
@@ -128,7 +122,6 @@ export function PlaybackBeepController() {
     player.currentSetIndex,
     player.isRunning,
     player.secondsRemainingInInterval,
-    player.preparationRemaining,
   ]);
 
   return null;

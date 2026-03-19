@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useWorkouts } from "@/state/workouts-context";
 import { totalDurationSeconds } from "@/domain/workout";
-import { decodeWorkoutOrBundle } from "@/domain/share";
-import { SendToPhoneModal } from "./SendToPhoneModal";
+import { decodeWorkoutOrBundle, encodeWorkouts } from "@/domain/share";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -27,7 +26,7 @@ export function WorkoutListScreen() {
   } = useWorkouts();
   const [importUrl, setImportUrl] = useState("");
   const [showImportUrl, setShowImportUrl] = useState(false);
-  const [showSendToPhone, setShowSendToPhone] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
@@ -66,6 +65,20 @@ export function WorkoutListScreen() {
         setImportUrl("");
         setShowImportUrl(false);
       }
+    }
+  }
+
+  async function handleShare() {
+    if (typeof window === "undefined" || workouts.length === 0) return;
+    const encoded = encodeWorkouts(workouts);
+    const url = new URL("/", window.location.origin);
+    url.searchParams.set("data", encoded);
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 1500);
+    } catch {
+      setShareCopied(false);
     }
   }
 
@@ -313,37 +326,47 @@ export function WorkoutListScreen() {
           {workouts.length > 0 && (
             <button
               type="button"
-              onClick={() => setShowSendToPhone(true)}
-              className="cursor-pointer flex items-center gap-2 rounded-xl border border-zinc-400 bg-zinc-100 px-4 py-3 text-left text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              onClick={handleShare}
+              className={`cursor-pointer flex items-center gap-2 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                shareCopied
+                  ? "border-green-500 bg-green-50 text-green-700 dark:border-green-600 dark:bg-green-950/40 dark:text-green-400"
+                  : "border-zinc-400 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              }`}
             >
-              <svg
-                className="h-4 w-4 text-zinc-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                />
-              </svg>
-              Send to phone
+              {shareCopied ? (
+                <svg
+                  className="h-4 w-4 text-green-600 dark:text-green-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="h-4 w-4 text-zinc-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  />
+                </svg>
+              )}
+              {shareCopied ? "Copied!" : "Share"}
             </button>
           )}
         </div>
       </div>
-
-      {showSendToPhone &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <SendToPhoneModal
-            workouts={workouts}
-            onClose={() => setShowSendToPhone(false)}
-          />,
-          document.body,
-        )}
 
       {deleteTarget &&
         typeof document !== "undefined" &&

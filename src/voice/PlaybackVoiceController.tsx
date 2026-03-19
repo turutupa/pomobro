@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePlayer, PREP_DURATION_SECONDS } from "@/state/player-context";
+import { usePlayer } from "@/state/player-context";
 import { useWorkout } from "@/state/workout-context";
 import { getVoiceEngine } from "./VoiceEngine";
-import { WorkInterval, RestInterval, expandIntervals } from "@/domain/workout";
+import {
+  WorkInterval,
+  RestInterval,
+  PrepInterval,
+  expandIntervals,
+} from "@/domain/workout";
 import { getVoiceVolume } from "@/state/settings-context";
 
 const NATURAL_OPTIONS = { rate: 0.88, pitch: 1 };
@@ -13,7 +18,13 @@ function isWork(interval: unknown): interval is WorkInterval {
   return !!interval && (interval as WorkInterval).type === "work";
 }
 
-function isMuted(interval: WorkInterval | RestInterval | undefined): boolean {
+function isPrep(interval: unknown): interval is PrepInterval {
+  return !!interval && (interval as PrepInterval).type === "prep";
+}
+
+function isMuted(
+  interval: WorkInterval | RestInterval | PrepInterval | undefined,
+): boolean {
   if (!interval) return false;
   return !!interval.voice?.mute;
 }
@@ -34,23 +45,24 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     const current = intervals[player.currentIndex];
     const muted = current && isMuted(current);
 
-    // Preparation countdown: "Get ready" at start, then 5, 4, 3, 2, 1 (buffer for speech)
-    if (
-      !muted &&
-      player.isRunning &&
-      player.preparationRemaining > 0 &&
-      current
-    ) {
-      if (player.preparationRemaining === PREP_DURATION_SECONDS) {
-        const name = isWork(current) ? current.title || "Work" : "Rest";
+    // Prep interval: "Get ready" at start, then 5, 4, 3, 2, 1 (buffer for speech)
+    if (!muted && player.isRunning && current && isPrep(current)) {
+      const rem = player.secondsRemainingInInterval;
+      const total = current.durationSeconds;
+      if (rem === total) {
+        const next = intervals[player.currentIndex + 1];
+        const name =
+          next && isWork(next)
+            ? (next as WorkInterval).title || "Work"
+            : "Rest";
         engine.speak(`Get ready for ${name}`, speakOptions);
-      } else if (player.preparationRemaining <= 5) {
-        engine.speak(String(player.preparationRemaining), speakOptions);
+      } else if (rem <= 5 && rem > 0) {
+        engine.speak(String(rem), speakOptions);
       }
       return;
     }
 
-    if (!current) return;
+    if (!current || isPrep(current)) return;
 
     const announceStart = current.voice?.announceStart ?? true;
     const announceHalfway = current.voice?.announceHalfway ?? false;
@@ -102,7 +114,6 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     player.currentIndex,
     player.isRunning,
     player.secondsRemainingInInterval,
-    player.preparationRemaining,
   ]);
 
   return null;

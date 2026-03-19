@@ -14,7 +14,7 @@
 - **Voice-guided intervals** — Spoken countdowns, halfway cues, and final countdowns so you can keep your eyes on the workout
 - **Beeps & chimes** — Optional audio cues per interval (beep, chime, bell)
 - **Shareable workouts** — Export as URL. Copy the link and open it on your phone. Done.
-- **Send to phone** — Sync all your routines desktop → phone by copying the URL. No account required.
+- **Share** — Sync all your routines desktop → phone by copying the URL. No account required.
 - **Dark mode** — Because night owls exist
 
 ## Quick start

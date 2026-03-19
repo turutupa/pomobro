@@ -7,20 +7,12 @@ import {
   type WorkInterval,
   type RestInterval,
 } from "@/domain/workout";
-import {
-  PlayerProvider,
-  usePlayer,
-  PREP_DURATION_SECONDS,
-} from "@/state/player-context";
+import { PlayerProvider, usePlayer } from "@/state/player-context";
 import {
   PhonePlaybackViewProvider,
   usePhonePlaybackView,
   useIsMobile,
 } from "@/state/phone-playback-view-context";
-import {
-  PrepEnabledProvider,
-  usePrepEnabled,
-} from "@/state/prep-enabled-context";
 import { PreviewModeProvider, usePreviewMode } from "@/state/preview-mode-context";
 import { WorkoutProvider, useWorkout } from "@/state/workout-context";
 import { useWorkouts } from "@/state/workouts-context";
@@ -28,7 +20,7 @@ import { useEffect, useRef, useLayoutEffect } from "react";
 import { IntervalEditorList } from "./IntervalCards";
 import { PlayerPanel } from "./PlayerPanel";
 import { SettingsDropdown } from "./SettingsDropdown";
-import { WorkoutHeader } from "./WorkoutHeader";
+import { WorkoutHeader, WorkoutHeaderTotal } from "./WorkoutHeader";
 import { PlaybackVoiceController } from "@/voice/PlaybackVoiceController";
 import { PlaybackBeepController } from "@/voice/PlaybackBeepController";
 import { resumeAudioContext } from "@/voice/BeepEngine";
@@ -55,8 +47,7 @@ export function WorkoutEditorScreen() {
   if (!currentWorkout) return null;
 
   return (
-    <PrepEnabledProvider>
-      <PreviewModeProvider>
+    <PreviewModeProvider>
         <WorkoutProvider key={currentWorkout.id} initialWorkout={currentWorkout}>
           <PlayerProvider workout={currentWorkout}>
             <PhonePlaybackViewProvider>
@@ -66,19 +57,17 @@ export function WorkoutEditorScreen() {
           </PlayerProvider>
         </WorkoutProvider>
       </PreviewModeProvider>
-    </PrepEnabledProvider>
   );
 }
 
 const DEFAULT_WORK_COLOR = "#0ea5e9";
 const DEFAULT_REST_COLOR = "#475569";
 /** Distinct color for "get ready" countdown so it's clearly different from work/rest. */
-const PREP_BG_COLOR = "#d97706";
+const PREP_BG_COLOR = "#0d9488"; // teal - distinct from amber pause/looper
 
 function WorkoutEditorContent() {
   const { view } = usePhonePlaybackView();
   const isMobile = useIsMobile();
-  const { prepEnabled } = usePrepEnabled();
   const { previewMode, togglePreviewMode } = usePreviewMode();
   const { state: workoutState } = useWorkout();
   const { state: player } = usePlayer();
@@ -86,9 +75,18 @@ function WorkoutEditorContent() {
   const isInPlaybackMode = player.isRunning || player.isPaused;
   const effectiveIndex = isInPlaybackMode ? player.currentIndex : 0;
   const currentInterval = playbackIntervals[effectiveIndex] ?? null;
-  const inPreparation = player.isRunning && player.preparationRemaining > 0;
+  const currentIntervalForPrep = playbackIntervals[player.currentIndex];
+  const inPreparation =
+    player.isRunning &&
+    currentIntervalForPrep &&
+    "type" in currentIntervalForPrep &&
+    currentIntervalForPrep.type === "prep";
   const showGetReadyAsDefault =
-    !isInPlaybackMode && prepEnabled && playbackIntervals.length > 0;
+    !isInPlaybackMode &&
+    playbackIntervals.length > 0 &&
+    playbackIntervals[0] &&
+    "type" in playbackIntervals[0] &&
+    playbackIntervals[0].type === "prep";
   const timerViewBgColor =
     inPreparation || showGetReadyAsDefault
       ? PREP_BG_COLOR
@@ -102,34 +100,37 @@ function WorkoutEditorContent() {
     <div className="flex h-screen w-full flex-col overflow-hidden text-zinc-900 dark:text-zinc-100">
       <PlaybackVoiceController enabled />
       <PlaybackBeepController />
-      <header className="flex shrink-0 w-full max-w-7xl flex-row items-center justify-between gap-2 px-4 py-4 md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]">
-        <div className="flex min-h-9 min-w-0 flex-1 items-center gap-2">
-          <BackButton />
-          <div className="min-w-0 flex-1">
+      <header className="flex shrink-0 w-full max-w-7xl flex-col gap-1 px-4 py-4 md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]">
+        <div className="flex h-9 min-h-9 min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <BackButton />
             <WorkoutHeader />
           </div>
-          <button
-            type="button"
-            onClick={togglePreviewMode}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+          <div className="flex shrink-0 items-center gap-0">
+            <button
+              type="button"
+              onClick={togglePreviewMode}
+              className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors ${
               previewMode
                 ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400"
                 : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-            }`}
-            aria-label={previewMode ? "Edit mode" : "Preview layout"}
-            title={previewMode ? "Edit mode" : "Preview layout"}
-          >
-            {previewMode ? (
-              <FaPen className="h-4 w-4" />
-            ) : (
-              <FaThList className="h-5 w-5" />
-            )}
-          </button>
+              }`}
+              aria-label={previewMode ? "Edit mode" : "Preview layout"}
+              title={previewMode ? "Edit mode" : "Preview layout"}
+            >
+              {previewMode ? (
+                <FaPen className="h-4 w-4" />
+              ) : (
+                <FaThList className="h-5 w-5" />
+              )}
+            </button>
+            <SettingsDropdown workout={workoutState.workout} />
+          </div>
         </div>
-        <SettingsDropdown />
+        <WorkoutHeaderTotal />
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 overflow-hidden px-2 pb-0 md:px-4 md:flex-row md:gap-8 md:pb-8 2xl:max-w-[1600px]">
+      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 overflow-hidden px-2 pb-0 md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
         <section
           className={`scrollbar-thin min-h-0 w-full overflow-y-auto py-2 px-1 pb-40 md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
         >
@@ -137,15 +138,17 @@ function WorkoutEditorContent() {
         </section>
 
         <section
-          className={`scrollbar-thin min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl p-5 text-white shadow-lg dark:text-zinc-100 md:p-6 ${isMobile && view === "cards" ? "hidden" : "block"} ${isMobile && view === "player" ? "pb-24" : ""} md:block ${!timerViewBgColor ? "bg-primary-600 dark:bg-zinc-800" : ""}`}
+          className={`scrollbar-thin flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-2xl p-5 text-white shadow-lg dark:text-zinc-100 md:min-h-full md:overflow-hidden md:p-6 ${isMobile && view === "cards" ? "hidden" : "block"} ${isMobile && view === "player" ? "pb-24" : ""} md:block ${!timerViewBgColor ? "bg-primary-600 dark:bg-zinc-800" : ""}`}
           style={
             timerViewBgColor ? { backgroundColor: timerViewBgColor } : undefined
           }
         >
-          <PlayerPanel
-            hideControls={isMobile}
-            backgroundColor={timerViewBgColor}
-          />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col md:h-full">
+            <PlayerPanel
+              hideControls={isMobile}
+              backgroundColor={timerViewBgColor}
+            />
+          </div>
         </section>
       </main>
       <MobilePlayerBar />
@@ -164,18 +167,24 @@ function MobilePlayerBar() {
   const isInPlaybackMode = player.isRunning || player.isPaused;
   const effectiveIndex = isInPlaybackMode ? player.currentIndex : 0;
   const current = playbackIntervals[effectiveIndex] ?? null;
-  const inPreparation = player.isRunning && player.preparationRemaining > 0;
+  const currentForPrep = playbackIntervals[player.currentIndex];
+  const inPreparation =
+    player.isRunning &&
+    currentForPrep &&
+    "type" in currentForPrep &&
+    currentForPrep.type === "prep";
   const currentTotal = inPreparation
-    ? PREP_DURATION_SECONDS
+    ? (currentForPrep?.durationSeconds ?? 7)
     : (current?.durationSeconds ?? 0);
   const displaySeconds = player.isRunning
     ? inPreparation
-      ? player.preparationRemaining
+      ? player.secondsRemainingInInterval
       : player.secondsRemainingInInterval
     : currentTotal;
   const elapsed = player.isRunning
     ? inPreparation
-      ? PREP_DURATION_SECONDS - player.preparationRemaining
+      ? (currentForPrep?.durationSeconds ?? 7) -
+        player.secondsRemainingInInterval
       : currentTotal > 0
         ? Math.max(0, currentTotal - player.secondsRemainingInInterval)
         : 0

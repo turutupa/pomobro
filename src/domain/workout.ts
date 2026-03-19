@@ -1,4 +1,4 @@
-export type IntervalType = "work" | "rest" | "looper";
+export type IntervalType = "work" | "rest" | "looper" | "prep";
 
 export type BeepSoundType = "beep" | "chime" | "bell";
 
@@ -49,11 +49,23 @@ export interface RestInterval extends BaseInterval {
 export interface LooperInterval {
   id: string;
   type: "looper";
-  /** Number of times to repeat the block (everything after previous looper up to this point). */
+  /** Number of times to repeat the block. */
   repeatCount: number;
+  /** IDs of work/rest intervals in the block (in order). When absent, falls back to legacy: everything since previous looper. */
+  wrapIntervalIds?: string[];
 }
 
-export type Interval = WorkInterval | RestInterval | LooperInterval;
+export interface PrepInterval extends BaseInterval {
+  type: "prep";
+  /** Play beep: one per second in last 3 sec, double beep when interval ends. */
+  beep?: boolean;
+  /** Sound for beep. */
+  beepSound?: BeepSoundType;
+  /** Voice settings (mute for announcements). */
+  voice?: VoiceSettings;
+}
+
+export type Interval = WorkInterval | RestInterval | LooperInterval | PrepInterval;
 
 export interface Workout {
   id: string;
@@ -101,14 +113,18 @@ export function createEmptyWorkout(
 
 export function totalDurationSeconds(workout: Workout): number {
   const expanded = expandIntervals(workout.intervals);
-  return expanded.reduce((sum, interval) => sum + interval.durationSeconds, 0);
+  const oneCircuit = expanded.reduce(
+    (sum, interval) => sum + interval.durationSeconds,
+    0,
+  );
+  const sets = Math.max(1, workout.sets ?? 1);
+  return oneCircuit * sets;
 }
 
 /**
  * Ensure invariants:
- * - No consecutive rest intervals.
- * - Rest intervals only appear after work (not at start or after another rest).
- * - Rest at end is allowed (user can add more work after it).
+ * - Filter out intervals with durationSeconds <= 0.
+ * - Allow any ordering of work/rest (consecutive rests, rest at start, etc.).
  */
 export function normalizeWorkout(workout: Workout): Workout {
   // Migrate legacy loopCount to sets
@@ -125,19 +141,10 @@ export function normalizeWorkout(workout: Workout): Workout {
       normalized.push(interval);
       continue;
     }
-    if (interval.durationSeconds <= 0) continue;
-
-    if (interval.type === "rest") {
-      const last = normalized[normalized.length - 1];
-      if (!last || last.type !== "work") {
-        // Skip rest at start or after another rest.
-        continue;
-      }
+    if (interval.type === "prep" || interval.type === "work" || interval.type === "rest") {
+      if (interval.durationSeconds <= 0) continue;
       normalized.push(interval);
-      continue;
     }
-
-    normalized.push(interval);
   }
 
   return { ...migrated, intervals: normalized };
@@ -186,40 +193,187 @@ export function addWorkIntervalAfter(
 
 export function addRestAfter(
   workout: Workout,
-  afterId: string,
+  afterId: string | null,
   durationSeconds?: number,
 ): Workout {
-  const idx = workout.intervals.findIndex((i) => i.id === afterId);
-  if (idx === -1) return workout;
-
+  const beepEnabled = workout.defaults.beepEnabledByDefault ?? true;
   const rest: RestInterval = {
     id: crypto.randomUUID(),
     type: "rest",
     durationSeconds: durationSeconds ?? workout.defaults.restDurationSeconds,
+    beep: beepEnabled,
   };
+
+  if (!afterId) {
+    const next = [rest, ...workout.intervals];
+    return normalizeWorkout({ ...workout, intervals: next });
+  }
+
+  const idx = workout.intervals.findIndex((i) => i.id === afterId);
+  if (idx === -1) return workout;
 
   const next = [...workout.intervals];
   next.splice(idx + 1, 0, rest);
   return normalizeWorkout({ ...workout, intervals: next });
 }
 
-export function addLooperAfter(
+export function addPrepAfter(
   workout: Workout,
-  afterId: string,
-  repeatCount?: number,
+  afterId: string | null,
+  durationSeconds?: number,
 ): Workout {
+  const beepEnabled = workout.defaults.beepEnabledByDefault ?? true;
+  const voiceEnabled = workout.defaults.voiceEnabledByDefault ?? false;
+  const prep: PrepInterval = {
+    id: crypto.randomUUID(),
+    type: "prep",
+    durationSeconds:
+      durationSeconds ?? workout.defaults.preCountdownSeconds ?? 7,
+    beep: beepEnabled,
+    voice: { mute: !voiceEnabled },
+  };
+
+  if (!afterId) {
+    const next = [prep, ...workout.intervals];
+    return normalizeWorkout({ ...workout, intervals: next });
+  }
+
   const idx = workout.intervals.findIndex((i) => i.id === afterId);
   if (idx === -1) return workout;
 
+  const next = [...workout.intervals];
+  next.splice(idx + 1, 0, prep);
+  return normalizeWorkout({ ...workout, intervals: next });
+}
+
+export function addLooperAfter(
+  workout: Workout,
+  afterId: string | null,
+  repeatCount?: number,
+): Workout {
   const looper: LooperInterval = {
     id: crypto.randomUUID(),
     type: "looper",
     repeatCount: repeatCount ?? 2,
+    wrapIntervalIds: [],
   };
+
+  if (!afterId) {
+    const next = [looper, ...workout.intervals];
+    return normalizeWorkout({ ...workout, intervals: next });
+  }
+
+  const idx = workout.intervals.findIndex((i) => i.id === afterId);
+  if (idx === -1) return workout;
+
+  const before = workout.intervals[idx];
+  looper.wrapIntervalIds =
+    before.type === "work" || before.type === "rest" ? [before.id] : [];
 
   const next = [...workout.intervals];
   next.splice(idx + 1, 0, looper);
   return normalizeWorkout({ ...workout, intervals: next });
+}
+
+/** Get the block of work/rest intervals for a looper. Uses wrapIntervalIds when present, else legacy (since previous looper). */
+export function getLooperBlock(
+  intervals: Interval[],
+  looper: LooperInterval,
+): (WorkInterval | RestInterval)[] {
+  if (looper.wrapIntervalIds && looper.wrapIntervalIds.length > 0) {
+    const idSet = new Set(looper.wrapIntervalIds);
+    return intervals.filter(
+      (x): x is WorkInterval | RestInterval =>
+        (x.type === "work" || x.type === "rest") && idSet.has(x.id),
+    );
+  }
+  const idx = intervals.findIndex((i) => i.id === looper.id);
+  if (idx <= 0) return [];
+  let lastLooperIndex = -1;
+  for (let i = 0; i < idx; i++) {
+    if (intervals[i].type === "looper") lastLooperIndex = i;
+  }
+  return intervals
+    .slice(lastLooperIndex + 1, idx)
+    .filter(
+      (x): x is WorkInterval | RestInterval =>
+        x.type === "work" || x.type === "rest",
+    );
+}
+
+/** Get the index of the previous looper, or -1 if none. */
+export function getPrevLooperIndex(
+  intervals: Interval[],
+  looperIndex: number,
+): number {
+  for (let i = looperIndex - 1; i >= 0; i--) {
+    if (intervals[i].type === "looper") return i;
+  }
+  return -1;
+}
+
+/** Get work/rest IDs that a looper can extend its block to (from previous looper + 1 up to card before this looper). */
+export function getLooperExtendableIds(
+  intervals: Interval[],
+  looperId: string,
+): string[] {
+  const idx = intervals.findIndex((i) => i.id === looperId);
+  if (idx <= 0) return [];
+  const prevLooper = getPrevLooperIndex(intervals, idx);
+  const start = prevLooper + 1;
+  return intervals
+    .slice(start, idx)
+    .filter(
+      (x): x is WorkInterval | RestInterval =>
+        x.type === "work" || x.type === "rest",
+    )
+    .map((x) => x.id);
+}
+
+export function updateLooperBlock(
+  workout: Workout,
+  looperId: string,
+  wrapIntervalIds: string[],
+): Workout {
+  const valid = getLooperExtendableIds(workout.intervals, looperId);
+  const validSet = new Set(valid);
+  const filtered = wrapIntervalIds.filter((id) => validSet.has(id));
+  if (filtered.length === 0) return workout;
+
+  return {
+    ...workout,
+    intervals: workout.intervals.map((interval) =>
+      interval.type === "looper" && interval.id === looperId
+        ? { ...interval, wrapIntervalIds: filtered }
+        : interval,
+    ),
+  };
+}
+
+/** Return the looper that has this work/rest interval in its block, or null. */
+export function getLooperForInterval(
+  intervals: Interval[],
+  intervalId: string,
+): LooperInterval | null {
+  for (const item of intervals) {
+    if (item.type !== "looper") continue;
+    const block = getLooperBlock(intervals, item);
+    if (block.some((x) => x.id === intervalId)) return item;
+  }
+  return null;
+}
+
+/** Return the looper if this interval is the topmost in that looper's block. */
+export function getLooperIfTopOfBlock(
+  intervals: Interval[],
+  intervalId: string,
+): LooperInterval | null {
+  for (const item of intervals) {
+    if (item.type !== "looper") continue;
+    const block = getLooperBlock(intervals, item);
+    if (block[0]?.id === intervalId) return item;
+  }
+  return null;
 }
 
 export function addRestBetween(
@@ -228,7 +382,7 @@ export function addRestBetween(
   durationSeconds?: number,
 ): Workout {
   const idx = workout.intervals.findIndex((i) => i.id === beforeId);
-  if (idx <= 0) return workout; // cannot add before first or if not found
+  if (idx < 0) return workout; // not found
 
   const beepEnabled = workout.defaults.beepEnabledByDefault ?? true;
   const rest: RestInterval = {
@@ -267,31 +421,28 @@ export function moveInterval(
   return normalizeWorkout({ ...workout, intervals: next });
 }
 
-/** Expand loopers into a flat sequence of work/rest intervals for playback. */
+/** Expand loopers into a flat sequence of work/rest/prep intervals for playback. */
 export function expandIntervals(
   intervals: Interval[],
-): (WorkInterval | RestInterval)[] {
-  const result: (WorkInterval | RestInterval)[] = [];
+): (WorkInterval | RestInterval | PrepInterval)[] {
+  const result: (WorkInterval | RestInterval | PrepInterval)[] = [];
   let lastLooperIndex = -1;
-
-  const flushBlock = (endExclusive: number) => {
-    for (let j = lastLooperIndex + 1; j < endExclusive; j++) {
-      const item = intervals[j];
-      if (item.type === "work" || item.type === "rest") {
-        result.push(item);
-      }
-    }
-  };
 
   for (let i = 0; i < intervals.length; i++) {
     const item = intervals[i];
     if (item.type === "looper") {
-      const block = intervals
-        .slice(lastLooperIndex + 1, i)
-        .filter(
-          (x): x is WorkInterval | RestInterval =>
-            x.type === "work" || x.type === "rest",
-        );
+      const block = getLooperBlock(intervals, item);
+      const blockIds = new Set(block.map((x) => x.id));
+      // Push work/rest/prep before this looper that are NOT in the block (e.g. prep)
+      for (let j = lastLooperIndex + 1; j < i; j++) {
+        const x = intervals[j];
+        if (
+          (x.type === "work" || x.type === "rest" || x.type === "prep") &&
+          !blockIds.has(x.id)
+        ) {
+          result.push(x);
+        }
+      }
       const n = Math.max(2, item.repeatCount);
       for (let r = 0; r < n; r++) {
         result.push(...block);
@@ -299,31 +450,27 @@ export function expandIntervals(
       lastLooperIndex = i;
     }
   }
-  flushBlock(intervals.length);
+  // Push remaining items after the last looper
+  for (let j = lastLooperIndex + 1; j < intervals.length; j++) {
+    const x = intervals[j];
+    if (x.type === "work" || x.type === "rest" || x.type === "prep") {
+      result.push(x);
+    }
+  }
   return result;
 }
 
-/** Given a raw interval id (work, rest, or looper), return the expanded interval id to use for starting playback there. */
+/** Given a raw interval id (work, rest, prep, or looper), return the expanded interval id to use for starting playback there. */
 export function getStartIntervalIdForPlayback(
   intervals: Interval[],
   intervalId: string,
 ): string | undefined {
   const item = intervals.find((i) => i.id === intervalId);
   if (!item) return undefined;
-  if (item.type === "work" || item.type === "rest") return item.id;
-  // Looper: return the first work/rest in the block it repeats
-  const idx = intervals.findIndex((i) => i.id === intervalId);
-  if (idx <= 0 || intervals[idx].type !== "looper") return undefined;
-  let lastLooperIndex = -1;
-  for (let i = 0; i < idx; i++) {
-    if (intervals[i].type === "looper") lastLooperIndex = i;
-  }
-  const block = intervals
-    .slice(lastLooperIndex + 1, idx)
-    .filter(
-      (x): x is WorkInterval | RestInterval =>
-        x.type === "work" || x.type === "rest",
-    );
+  if (item.type === "work" || item.type === "rest" || item.type === "prep")
+    return item.id;
+  if (item.type !== "looper") return undefined;
+  const block = getLooperBlock(intervals, item);
   return block[0]?.id;
 }
 
@@ -342,14 +489,21 @@ export function getLooperProgressAtExpandedIndex(
   for (let i = 0; i < intervals.length; i++) {
     const item = intervals[i];
     if (item.type === "looper") {
-      const block = intervals
-        .slice(lastLooperIndex + 1, i)
-        .filter(
-          (x): x is WorkInterval | RestInterval =>
-            x.type === "work" || x.type === "rest",
-        );
+      const block = getLooperBlock(intervals, item);
+      const blockIds = new Set(block.map((x) => x.id));
       const n = Math.max(2, item.repeatCount);
       const blockSize = block.length;
+
+      // Count items before this looper that are NOT in the block (mirrors expandIntervals)
+      for (let j = lastLooperIndex + 1; j < i; j++) {
+        const x = intervals[j];
+        if (
+          (x.type === "work" || x.type === "rest" || x.type === "prep") &&
+          !blockIds.has(x.id)
+        ) {
+          expandedCount++;
+        }
+      }
 
       for (let r = 0; r < n; r++) {
         const start = expandedCount;
@@ -374,7 +528,7 @@ export function findCurrentIntervalAtTime(
   workout: Workout,
   secondsFromStart: number,
 ): {
-  interval: WorkInterval | RestInterval | null;
+  interval: WorkInterval | RestInterval | PrepInterval | null;
   index: number;
   offsetSeconds: number;
 } {

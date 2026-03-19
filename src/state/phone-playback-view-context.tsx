@@ -7,19 +7,20 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { usePrepEnabled } from "@/state/prep-enabled-context";
+import { useWorkout } from "@/state/workout-context";
+import { expandIntervals } from "@/domain/workout";
 
 const STORAGE_KEY = "pomobro:phonePlaybackView";
 const MOBILE_BREAKPOINT = 768;
 
 export type PhonePlaybackView = "cards" | "player";
 
-function getStoredView(prepEnabled: boolean): PhonePlaybackView {
+function getStoredView(hasPrepAtStart: boolean): PhonePlaybackView {
   if (typeof window === "undefined") return "cards";
   const v = localStorage.getItem(STORAGE_KEY);
   if (v === "player") return "player";
   if (v === "cards") return "cards";
-  return prepEnabled ? "player" : "cards";
+  return hasPrepAtStart ? "player" : "cards";
 }
 
 interface PhonePlaybackViewContextValue {
@@ -37,12 +38,18 @@ export function PhonePlaybackViewProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { prepEnabled } = usePrepEnabled();
+  const { state } = useWorkout();
+  const playbackIntervals = expandIntervals(state.workout.intervals);
+  const hasPrepAtStart =
+    playbackIntervals.length > 0 &&
+    playbackIntervals[0] &&
+    "type" in playbackIntervals[0] &&
+    playbackIntervals[0].type === "prep";
   const [view, setViewState] = useState<PhonePlaybackView>("cards");
 
   useEffect(() => {
-    setViewState(getStoredView(prepEnabled));
-  }, [prepEnabled]);
+    setViewState(getStoredView(hasPrepAtStart));
+  }, [hasPrepAtStart]);
 
   const setView = useCallback((v: PhonePlaybackView) => {
     setViewState(v);
