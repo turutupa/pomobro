@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { encodeWorkouts } from "@/domain/share";
-import { QRCodeSVG } from "qrcode.react";
 import type { Workout } from "@/domain/workout";
 
 interface SendToPhoneModalProps {
@@ -36,9 +35,6 @@ export function SendToPhoneModal({ workouts, onClose }: SendToPhoneModalProps) {
 
   if (typeof window === "undefined") return null;
 
-  // QR codes max out at ~2.9KB; longer URLs cause "Data too long" error
-  const qrFits = shareUrl.length <= 2500;
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -51,20 +47,17 @@ export function SendToPhoneModal({ workouts, onClose }: SendToPhoneModalProps) {
         className="w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-300 bg-zinc-100 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="send-to-phone-title" className="font-display border-b border-zinc-200 px-5 py-4 text-lg font-semibold text-zinc-900 dark:border-zinc-700 dark:text-zinc-100">
+        <h2
+          id="send-to-phone-title"
+          className="font-display border-b border-zinc-200 px-5 py-4 text-lg font-semibold text-zinc-900 dark:border-zinc-700 dark:text-zinc-100"
+        >
           Send to phone
         </h2>
         <div className="flex flex-col items-center gap-4 p-5">
           <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
-            {qrFits
-              ? `Scan this QR code on your phone to import ${workouts.length} workout${workouts.length !== 1 ? "s" : ""}`
-              : "Too much data for a QR code — use Copy URL and open it on your phone"}
+            Copy the URL and open it on your phone to import {workouts.length}{" "}
+            workout{workouts.length !== 1 ? "s" : ""}.
           </p>
-          {qrFits ? (
-            <div className="flex justify-center rounded-xl bg-zinc-100 p-4 dark:bg-zinc-800">
-              <QRCodeSVG value={shareUrl} size={200} level="M" />
-            </div>
-          ) : null}
           <button
             type="button"
             onClick={copyUrl}

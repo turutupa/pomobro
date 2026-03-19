@@ -9,9 +9,15 @@ interface PrepEnabledContextValue {
   setPrepEnabled: (enabled: boolean) => void;
 }
 
-const PrepEnabledContext = createContext<PrepEnabledContextValue | undefined>(undefined);
+const PrepEnabledContext = createContext<PrepEnabledContextValue | undefined>(
+  undefined,
+);
 
-export function PrepEnabledProvider({ children }: { children: React.ReactNode }) {
+export function PrepEnabledProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [prepEnabled, setPrepEnabledState] = useState(true);
 
   useEffect(() => {
@@ -36,6 +42,7 @@ export function PrepEnabledProvider({ children }: { children: React.ReactNode })
 
 export function usePrepEnabled() {
   const ctx = useContext(PrepEnabledContext);
-  if (!ctx) throw new Error("usePrepEnabled must be used within PrepEnabledProvider");
+  if (!ctx)
+    throw new Error("usePrepEnabled must be used within PrepEnabledProvider");
   return ctx;
 }

@@ -49,7 +49,15 @@ function AppContent() {
       <header className="relative flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-8 md:mx-auto md:py-12 [padding-inline-end:max(1rem,env(safe-area-inset-right))]">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400">
-            <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 32 32" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="h-7 w-7"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 32 32"
+              strokeWidth={2.2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M10 8v16M10 8h6a5 5 0 0 1 0 10" />
             </svg>
           </div>

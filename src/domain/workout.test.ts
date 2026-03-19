@@ -39,9 +39,7 @@ describe("workout invariants", () => {
 
   it("removes leading and trailing rests", () => {
     const workout = makeWorkout(["rest", "work", "rest"]);
-    expect(workout.intervals.map((i) => i.type)).toEqual([
-      "work",
-    ]);
+    expect(workout.intervals.map((i) => i.type)).toEqual(["work"]);
   });
 
   it("addWorkIntervalAfter maintains invariants", () => {
@@ -54,11 +52,7 @@ describe("workout invariants", () => {
   it("addRestBetween inserts rest only between works", () => {
     const base = makeWorkout(["work", "work"]);
     const next = addRestBetween(base, base.intervals[1].id);
-    expect(next.intervals.map((i) => i.type)).toEqual([
-      "work",
-      "rest",
-      "work",
-    ]);
+    expect(next.intervals.map((i) => i.type)).toEqual(["work", "rest", "work"]);
   });
 
   it("deleteInterval collapses rests correctly", () => {
@@ -68,4 +62,3 @@ describe("workout invariants", () => {
     expect(afterDelete.intervals.map((i) => i.type)).toEqual(["work"]);
   });
 });
-

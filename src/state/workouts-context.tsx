@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useLayoutEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useState,
+} from "react";
 import type { Workout } from "@/domain/workout";
 import { createEmptyWorkout, normalizeWorkout } from "@/domain/workout";
 import { useSettings } from "@/state/settings-context";
@@ -70,7 +76,7 @@ function reducer(state: WorkoutsState, action: WorkoutsAction): WorkoutsState {
     }
     case "update": {
       const list = state.workouts.map((w) =>
-        w.id === action.id ? normalizeWorkout({ ...w, ...action.patch }) : w
+        w.id === action.id ? normalizeWorkout({ ...w, ...action.patch }) : w,
       );
       saveWorkouts(list);
       return { ...state, workouts: list };
@@ -127,7 +133,8 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
     setIsLoaded(true);
   }, []);
 
-  const currentWorkout = state.workouts.find((w) => w.id === state.currentId) ?? null;
+  const currentWorkout =
+    state.workouts.find((w) => w.id === state.currentId) ?? null;
 
   const setCurrentId = useCallback((id: string | null) => {
     dispatch({ type: "setCurrent", id });
@@ -150,7 +157,7 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: "update", id: state.currentId, patch });
       }
     },
-    [state.currentId]
+    [state.currentId],
   );
 
   const deleteWorkout = useCallback((id: string) => {
@@ -162,7 +169,10 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const importWorkout = useCallback((workout: Workout) => {
-    const normalized = normalizeWorkout({ ...workout, id: crypto.randomUUID() });
+    const normalized = normalizeWorkout({
+      ...workout,
+      id: crypto.randomUUID(),
+    });
     dispatch({ type: "import", workout: normalized });
     return normalized;
   }, []);
@@ -177,7 +187,11 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       }
       const next = dedupeById(loadWorkouts().map((x) => normalizeWorkout(x)));
       const last = normalized[normalized.length - 1];
-      dispatch({ type: "import_bundle_done", workouts: next, currentId: last.id });
+      dispatch({
+        type: "import_bundle_done",
+        workouts: next,
+        currentId: last.id,
+      });
       return last;
     }
     return null;
@@ -207,7 +221,7 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       reorderWorkout,
       importWorkout,
       importWorkouts,
-    ]
+    ],
   );
 
   if (!isLoaded) {

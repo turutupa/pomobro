@@ -1,15 +1,27 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FaPause, FaPlay, FaTh, FaClock, FaUndo } from "react-icons/fa";
-import { expandIntervals } from "@/domain/workout";
-import { PlayerProvider, usePlayer } from "@/state/player-context";
+import { FaPause, FaPlay, FaTh, FaClock, FaUndo, FaThList, FaPen } from "react-icons/fa";
+import {
+  expandIntervals,
+  type WorkInterval,
+  type RestInterval,
+} from "@/domain/workout";
+import {
+  PlayerProvider,
+  usePlayer,
+  PREP_DURATION_SECONDS,
+} from "@/state/player-context";
 import {
   PhonePlaybackViewProvider,
   usePhonePlaybackView,
   useIsMobile,
 } from "@/state/phone-playback-view-context";
-import { PrepEnabledProvider } from "@/state/prep-enabled-context";
+import {
+  PrepEnabledProvider,
+  usePrepEnabled,
+} from "@/state/prep-enabled-context";
+import { PreviewModeProvider, usePreviewMode } from "@/state/preview-mode-context";
 import { WorkoutProvider, useWorkout } from "@/state/workout-context";
 import { useWorkouts } from "@/state/workouts-context";
 import { useEffect, useRef, useLayoutEffect } from "react";
@@ -44,21 +56,47 @@ export function WorkoutEditorScreen() {
 
   return (
     <PrepEnabledProvider>
-      <WorkoutProvider key={currentWorkout.id} initialWorkout={currentWorkout}>
-        <PlayerProvider workout={currentWorkout}>
-          <PhonePlaybackViewProvider>
-            <WorkoutEditorSync />
-            <WorkoutEditorContent />
-          </PhonePlaybackViewProvider>
-        </PlayerProvider>
-      </WorkoutProvider>
+      <PreviewModeProvider>
+        <WorkoutProvider key={currentWorkout.id} initialWorkout={currentWorkout}>
+          <PlayerProvider workout={currentWorkout}>
+            <PhonePlaybackViewProvider>
+              <WorkoutEditorSync />
+              <WorkoutEditorContent />
+            </PhonePlaybackViewProvider>
+          </PlayerProvider>
+        </WorkoutProvider>
+      </PreviewModeProvider>
     </PrepEnabledProvider>
   );
 }
 
+const DEFAULT_WORK_COLOR = "#0ea5e9";
+const DEFAULT_REST_COLOR = "#475569";
+/** Distinct color for "get ready" countdown so it's clearly different from work/rest. */
+const PREP_BG_COLOR = "#d97706";
+
 function WorkoutEditorContent() {
   const { view } = usePhonePlaybackView();
   const isMobile = useIsMobile();
+  const { prepEnabled } = usePrepEnabled();
+  const { previewMode, togglePreviewMode } = usePreviewMode();
+  const { state: workoutState } = useWorkout();
+  const { state: player } = usePlayer();
+  const playbackIntervals = expandIntervals(workoutState.workout.intervals);
+  const isInPlaybackMode = player.isRunning || player.isPaused;
+  const effectiveIndex = isInPlaybackMode ? player.currentIndex : 0;
+  const currentInterval = playbackIntervals[effectiveIndex] ?? null;
+  const inPreparation = player.isRunning && player.preparationRemaining > 0;
+  const showGetReadyAsDefault =
+    !isInPlaybackMode && prepEnabled && playbackIntervals.length > 0;
+  const timerViewBgColor =
+    inPreparation || showGetReadyAsDefault
+      ? PREP_BG_COLOR
+      : currentInterval
+        ? currentInterval.type === "work"
+          ? ((currentInterval as WorkInterval).color ?? DEFAULT_WORK_COLOR)
+          : ((currentInterval as RestInterval).color ?? DEFAULT_REST_COLOR)
+        : undefined;
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden text-zinc-900 dark:text-zinc-100">
@@ -70,6 +108,23 @@ function WorkoutEditorContent() {
           <div className="min-w-0 flex-1">
             <WorkoutHeader />
           </div>
+          <button
+            type="button"
+            onClick={togglePreviewMode}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+              previewMode
+                ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400"
+                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            }`}
+            aria-label={previewMode ? "Edit mode" : "Preview layout"}
+            title={previewMode ? "Edit mode" : "Preview layout"}
+          >
+            {previewMode ? (
+              <FaPen className="h-4 w-4" />
+            ) : (
+              <FaThList className="h-5 w-5" />
+            )}
+          </button>
         </div>
         <SettingsDropdown />
       </header>
@@ -82,9 +137,15 @@ function WorkoutEditorContent() {
         </section>
 
         <section
-          className={`scrollbar-thin min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl bg-primary-600 p-5 text-white shadow-lg dark:bg-zinc-800 dark:text-zinc-100 md:p-6 ${isMobile && view === "cards" ? "hidden" : "block"} md:block`}
+          className={`scrollbar-thin min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl p-5 text-white shadow-lg dark:text-zinc-100 md:p-6 ${isMobile && view === "cards" ? "hidden" : "block"} ${isMobile && view === "player" ? "pb-24" : ""} md:block ${!timerViewBgColor ? "bg-primary-600 dark:bg-zinc-800" : ""}`}
+          style={
+            timerViewBgColor ? { backgroundColor: timerViewBgColor } : undefined
+          }
         >
-          <PlayerPanel hideControls={isMobile} />
+          <PlayerPanel
+            hideControls={isMobile}
+            backgroundColor={timerViewBgColor}
+          />
         </section>
       </main>
       <MobilePlayerBar />
@@ -104,21 +165,21 @@ function MobilePlayerBar() {
   const effectiveIndex = isInPlaybackMode ? player.currentIndex : 0;
   const current = playbackIntervals[effectiveIndex] ?? null;
   const inPreparation = player.isRunning && player.preparationRemaining > 0;
-  const currentTotal = inPreparation ? 7 : (current?.durationSeconds ?? 0);
-  const displaySeconds =
-    player.isRunning
-      ? inPreparation
-        ? player.preparationRemaining
-        : player.secondsRemainingInInterval
-      : currentTotal;
-  const elapsed =
-    player.isRunning
-      ? inPreparation
-        ? 7 - player.preparationRemaining
-        : currentTotal > 0
-          ? Math.max(0, currentTotal - player.secondsRemainingInInterval)
-          : 0
-      : 0;
+  const currentTotal = inPreparation
+    ? PREP_DURATION_SECONDS
+    : (current?.durationSeconds ?? 0);
+  const displaySeconds = player.isRunning
+    ? inPreparation
+      ? player.preparationRemaining
+      : player.secondsRemainingInInterval
+    : currentTotal;
+  const elapsed = player.isRunning
+    ? inPreparation
+      ? PREP_DURATION_SECONDS - player.preparationRemaining
+      : currentTotal > 0
+        ? Math.max(0, currentTotal - player.secondsRemainingInInterval)
+        : 0
+    : 0;
   const progress =
     currentTotal > 1
       ? Math.min(1, elapsed / (currentTotal - 1))
@@ -143,7 +204,9 @@ function MobilePlayerBar() {
           <button
             type="button"
             onClick={toggleView}
-            aria-label={view === "cards" ? "Switch to timer view" : "Switch to cards view"}
+            aria-label={
+              view === "cards" ? "Switch to timer view" : "Switch to cards view"
+            }
             className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-zinc-600 text-white transition-colors hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500"
           >
             {view === "cards" ? (

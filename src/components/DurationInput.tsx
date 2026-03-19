@@ -40,7 +40,9 @@ export function DurationInput({
   };
 
   const valueRef = useRef(value);
-  const parsed = Number.isNaN(parseInt(local, 10)) ? value : Math.max(min, Math.min(max, parseInt(local, 10)));
+  const parsed = Number.isNaN(parseInt(local, 10))
+    ? value
+    : Math.max(min, Math.min(max, parseInt(local, 10)));
   valueRef.current = parsed;
 
   const decrement = () => {
@@ -63,7 +65,10 @@ export function DurationInput({
     }
   };
 
-  const repeatRef = useRef<{ timeout: ReturnType<typeof setTimeout>; interval: ReturnType<typeof setInterval> } | null>(null);
+  const repeatRef = useRef<{
+    timeout: ReturnType<typeof setTimeout>;
+    interval: ReturnType<typeof setInterval>;
+  } | null>(null);
 
   const clearRepeat = () => {
     if (repeatRef.current) {
@@ -131,7 +136,10 @@ export function DurationInput({
         onKeyDown={(e) => e.key === "Enter" && commit(local)}
         onClick={(e) => e.stopPropagation()}
         onFocus={(e) => {
-          e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+          e.target.setSelectionRange(
+            e.target.value.length,
+            e.target.value.length,
+          );
         }}
       />
       <button

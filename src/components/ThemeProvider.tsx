@@ -18,7 +18,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem("pomobro:theme") as Theme | null;
-    setThemeState(stored && ["light", "dark", "system"].includes(stored) ? stored : "system");
+    setThemeState(
+      stored && ["light", "dark", "system"].includes(stored)
+        ? stored
+        : "system",
+    );
   }, []);
 
   useEffect(() => {
@@ -35,7 +39,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Sync theme-color meta for mobile browser chrome (address bar, status bar)
     const color = resolvedTheme === "dark" ? "#0c0c0e" : "#f8fafc";
-    document.querySelectorAll('meta[name="theme-color"]').forEach((el) => el.remove());
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((el) => el.remove());
     const m = document.createElement("meta");
     m.name = "theme-color";
     m.content = color;
@@ -47,10 +53,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const handler = () => {
       if (theme === "system") {
         const resolvedTheme = mq.matches ? "dark" : "light";
-        document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+        document.documentElement.classList.toggle(
+          "dark",
+          resolvedTheme === "dark",
+        );
         setResolved(resolvedTheme);
         const color = resolvedTheme === "dark" ? "#0c0c0e" : "#f8fafc";
-        document.querySelectorAll('meta[name="theme-color"]').forEach((el) => el.remove());
+        document
+          .querySelectorAll('meta[name="theme-color"]')
+          .forEach((el) => el.remove());
         const m = document.createElement("meta");
         m.name = "theme-color";
         m.content = color;
@@ -70,7 +81,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (theme === null && typeof document !== "undefined") {
-      setResolved(document.documentElement.classList.contains("dark") ? "dark" : "light");
+      setResolved(
+        document.documentElement.classList.contains("dark") ? "dark" : "light",
+      );
     }
   }, [theme]);
 

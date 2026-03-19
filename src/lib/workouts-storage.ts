@@ -24,7 +24,10 @@ export function loadWorkouts(): Workout[] {
     }
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((w): w is Workout => w && typeof w === "object" && Array.isArray((w as Workout).intervals));
+    return parsed.filter(
+      (w): w is Workout =>
+        w && typeof w === "object" && Array.isArray((w as Workout).intervals),
+    );
   } catch {
     return [];
   }

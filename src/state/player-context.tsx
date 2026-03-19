@@ -1,5 +1,7 @@
 "use client";
 
+import { Workout, expandIntervals } from "@/domain/workout";
+import { usePrepEnabled } from "@/state/prep-enabled-context";
 import React, {
   createContext,
   useContext,
@@ -8,8 +10,9 @@ import React, {
   useReducer,
   useRef,
 } from "react";
-import { Workout, expandIntervals } from "@/domain/workout";
-import { usePrepEnabled } from "@/state/prep-enabled-context";
+
+/** Duration of the "get ready" countdown in seconds. */
+export const PREP_DURATION_SECONDS = 7;
 
 function getPlaybackIntervals(workout: Workout) {
   return expandIntervals(workout.intervals);
@@ -30,7 +33,12 @@ interface PlayerState {
 
 type Action =
   | { type: "reset"; workout: Workout }
-  | { type: "play"; workout: Workout; startIntervalId?: string; prepEnabled?: boolean }
+  | {
+      type: "play";
+      workout: Workout;
+      startIntervalId?: string;
+      prepEnabled?: boolean;
+    }
   | { type: "pause" }
   | { type: "tick"; workout: Workout }
   | { type: "jumpTo"; index: number; workout: Workout };
@@ -65,30 +73,45 @@ function reducer(state: PlayerState, action: Action): PlayerState {
     case "play": {
       const intervals = getPlaybackIntervals(action.workout);
       if (intervals.length === 0) return state;
+      const isStartingFresh =
+        !state.isRunning &&
+        !state.isPaused &&
+        action.startIntervalId === undefined;
       const idx =
         action.startIntervalId !== undefined
-          ? Math.max(0, intervals.findIndex((i) => i.id === action.startIntervalId))
-          : state.currentIndex;
+          ? Math.max(
+              0,
+              intervals.findIndex((i) => i.id === action.startIntervalId),
+            )
+          : isStartingFresh
+            ? 0
+            : state.currentIndex;
       const safeIdx = Math.max(0, Math.min(idx, intervals.length - 1));
       const target = intervals[safeIdx];
       const isResuming = action.startIntervalId === undefined;
       const atFullDuration =
         (action.startIntervalId !== undefined ||
+          isStartingFresh ||
           (state.currentIndex === safeIdx &&
             state.secondsRemainingInInterval === target.durationSeconds)) &&
         state.preparationRemaining === 0;
-      const prepCount = action.prepEnabled !== false ? 7 : 0;
+      const skipPrep = action.startIntervalId !== undefined;
+      const prepCount =
+        !skipPrep && action.prepEnabled !== false
+          ? PREP_DURATION_SECONDS
+          : 0;
       return {
         ...state,
         currentIndex: safeIdx,
-        currentSetIndex: action.startIntervalId !== undefined ? 0 : state.currentSetIndex,
+        currentSetIndex:
+          action.startIntervalId !== undefined ? 0 : state.currentSetIndex,
         secondsRemainingInInterval: isResuming
           ? state.secondsRemainingInInterval
           : target.durationSeconds,
-        preparationRemaining: isResuming
-          ? state.preparationRemaining
-          : atFullDuration
-            ? prepCount
+        preparationRemaining: atFullDuration
+          ? prepCount
+          : isResuming
+            ? state.preparationRemaining
             : state.preparationRemaining,
         isRunning: true,
         isPaused: false,
@@ -112,8 +135,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         ...state,
         currentIndex: action.index,
         currentSetIndex: 0,
-        secondsRemainingInInterval:
-          intervals[action.index].durationSeconds,
+        secondsRemainingInInterval: intervals[action.index].durationSeconds,
         preparationRemaining: 0,
         startedAt: null,
         isRunning: false,
@@ -200,12 +222,13 @@ export function PlayerProvider({
     dispatch({ type: "reset", workout });
   }, [intervalIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const value = useMemo(() => ({ state, dispatch, prepEnabled }), [state, prepEnabled]);
+  const value = useMemo(
+    () => ({ state, dispatch, prepEnabled }),
+    [state, prepEnabled],
+  );
 
   return (
-    <PlayerContext.Provider value={value}>
-      {children}
-    </PlayerContext.Provider>
+    <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
   );
 }
 
@@ -229,4 +252,3 @@ export function usePlayer() {
 
   return { ...ctx, ...controls };
 }
-

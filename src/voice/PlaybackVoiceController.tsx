@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePlayer } from "@/state/player-context";
+import { usePlayer, PREP_DURATION_SECONDS } from "@/state/player-context";
 import { useWorkout } from "@/state/workout-context";
 import { getVoiceEngine } from "./VoiceEngine";
 import { WorkInterval, RestInterval, expandIntervals } from "@/domain/workout";
@@ -34,14 +34,14 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     const current = intervals[player.currentIndex];
     const muted = current && isMuted(current);
 
-    // Preparation countdown: "Get ready" at 7, then 5, 4, 3, 2, 1 (7 and 6 are buffer for speech)
+    // Preparation countdown: "Get ready" at start, then 5, 4, 3, 2, 1 (buffer for speech)
     if (
       !muted &&
       player.isRunning &&
       player.preparationRemaining > 0 &&
       current
     ) {
-      if (player.preparationRemaining === 7) {
+      if (player.preparationRemaining === PREP_DURATION_SECONDS) {
         const name = isWork(current) ? current.title || "Work" : "Rest";
         engine.speak(`Get ready for ${name}`, speakOptions);
       } else if (player.preparationRemaining <= 5) {
@@ -52,9 +52,14 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
 
     if (!current) return;
 
+    const announceStart = current.voice?.announceStart ?? true;
+    const announceHalfway = current.voice?.announceHalfway ?? false;
+    const finalCountdown = (current.voice?.finalCountdownSeconds ?? 3) > 0;
+
     // Announce interval start when timer is at full duration (just started)
     if (
       !muted &&
+      announceStart &&
       player.secondsRemainingInInterval === current.durationSeconds &&
       player.isRunning
     ) {
@@ -63,22 +68,33 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
       } else {
         engine.speak(
           `Rest for ${current.durationSeconds} seconds`,
-          speakOptions
+          speakOptions,
         );
       }
     }
 
-    // Final 3-second countdown
+    // Halfway announcement (work intervals only)
+    const halfwayRemaining = Math.ceil(current.durationSeconds / 2);
     if (
       !muted &&
+      announceHalfway &&
+      isWork(current) &&
+      player.isRunning &&
+      player.secondsRemainingInInterval === halfwayRemaining &&
+      current.durationSeconds > 3
+    ) {
+      engine.speak("Halfway!", speakOptions);
+    }
+
+    // Final countdown (3, 2, 1)
+    if (
+      !muted &&
+      finalCountdown &&
       player.isRunning &&
       player.secondsRemainingInInterval > 0 &&
       player.secondsRemainingInInterval <= 3
     ) {
-      engine.speak(
-        String(player.secondsRemainingInInterval),
-        speakOptions
-      );
+      engine.speak(String(player.secondsRemainingInInterval), speakOptions);
     }
   }, [
     enabled,
@@ -91,4 +107,3 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
 
   return null;
 }
-

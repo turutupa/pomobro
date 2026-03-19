@@ -10,7 +10,8 @@ export interface VoiceEngine {
 }
 
 function selectNaturalVoice(): SpeechSynthesisVoice | undefined {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
+  if (typeof window === "undefined" || !("speechSynthesis" in window))
+    return undefined;
   const voices = window.speechSynthesis.getVoices();
   if (voices.length === 0) return undefined;
   // Prefer en-US voices that sound natural (Samantha, Karen, Daniel, etc.)
@@ -23,7 +24,7 @@ function selectNaturalVoice(): SpeechSynthesisVoice | undefined {
         v.name.includes("Alex") ||
         v.name.includes("Victoria") ||
         v.name.includes("Google") ||
-        v.name.includes("Microsoft"))
+        v.name.includes("Microsoft")),
   );
   return preferred ?? voices.find((v) => v.lang.startsWith("en")) ?? voices[0];
 }
@@ -58,4 +59,3 @@ export function getVoiceEngine(): VoiceEngine {
   }
   return engine;
 }
-

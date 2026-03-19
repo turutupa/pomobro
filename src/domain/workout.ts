@@ -5,9 +5,11 @@ export type BeepSoundType = "beep" | "chime" | "bell";
 export interface VoiceSettings {
   /** Announce a pre-countdown before this interval starts (seconds). 0 disables it. */
   preCountdownSeconds?: number;
+  /** Announce activity name at interval start. */
+  announceStart?: boolean;
   /** Announce halfway point during work intervals. */
   announceHalfway?: boolean;
-  /** Announce a final countdown (e.g. last 10 seconds). 0 disables it. */
+  /** Announce final countdown (3, 2, 1). 0 disables. */
   finalCountdownSeconds?: number;
   /** Disable voice just for this interval, regardless of global setting. */
   mute?: boolean;
@@ -75,7 +77,9 @@ export interface Workout {
 }
 
 export function createEmptyWorkout(
-  partial?: Partial<Omit<Workout, "defaults">> & { defaults?: Partial<Workout["defaults"]> }
+  partial?: Partial<Omit<Workout, "defaults">> & {
+    defaults?: Partial<Workout["defaults"]>;
+  },
 ): Workout {
   return normalizeWorkout({
     id: partial?.id ?? crypto.randomUUID(),
@@ -142,7 +146,7 @@ export function normalizeWorkout(workout: Workout): Workout {
 export function addWorkIntervalAfter(
   workout: Workout,
   afterId: string | null,
-  partial?: Partial<Omit<WorkInterval, "id" | "type">>
+  partial?: Partial<Omit<WorkInterval, "id" | "type">>,
 ): Workout {
   const voiceEnabled = workout.defaults.voiceEnabledByDefault ?? false;
   const beepEnabled = workout.defaults.beepEnabledByDefault ?? true;
@@ -154,11 +158,10 @@ export function addWorkIntervalAfter(
     title: partial?.title ?? "",
     description: partial?.description,
     color: partial?.color ?? "#0ea5e9",
-    voice:
-      partial?.voice ?? {
-        mute: !voiceEnabled,
-        beep: beepEnabled,
-      },
+    voice: partial?.voice ?? {
+      mute: !voiceEnabled,
+      beep: beepEnabled,
+    },
   };
 
   if (!afterId) {
@@ -184,12 +187,10 @@ export function addWorkIntervalAfter(
 export function addRestAfter(
   workout: Workout,
   afterId: string,
-  durationSeconds?: number
+  durationSeconds?: number,
 ): Workout {
   const idx = workout.intervals.findIndex((i) => i.id === afterId);
   if (idx === -1) return workout;
-  const after = workout.intervals[idx];
-  if (after.type !== "work") return workout;
 
   const rest: RestInterval = {
     id: crypto.randomUUID(),
@@ -202,11 +203,13 @@ export function addRestAfter(
   return normalizeWorkout({ ...workout, intervals: next });
 }
 
-export function addLooperAfter(workout: Workout, afterId: string, repeatCount?: number): Workout {
+export function addLooperAfter(
+  workout: Workout,
+  afterId: string,
+  repeatCount?: number,
+): Workout {
   const idx = workout.intervals.findIndex((i) => i.id === afterId);
   if (idx === -1) return workout;
-  const after = workout.intervals[idx];
-  if (after.type === "looper") return workout;
 
   const looper: LooperInterval = {
     id: crypto.randomUUID(),
@@ -222,21 +225,10 @@ export function addLooperAfter(workout: Workout, afterId: string, repeatCount?: 
 export function addRestBetween(
   workout: Workout,
   beforeId: string,
-  durationSeconds?: number
+  durationSeconds?: number,
 ): Workout {
   const idx = workout.intervals.findIndex((i) => i.id === beforeId);
   if (idx <= 0) return workout; // cannot add before first or if not found
-
-  const prev = workout.intervals[idx - 1];
-  const current = workout.intervals[idx];
-
-  if (prev.type !== "work" || current.type !== "work") return workout;
-
-  const existingRest = workout.intervals[idx - 1] as Interval;
-  if (existingRest.type === "rest") {
-    // There's already a rest here; keep as-is.
-    return workout;
-  }
 
   const beepEnabled = workout.defaults.beepEnabledByDefault ?? true;
   const rest: RestInterval = {
@@ -259,12 +251,15 @@ export function deleteInterval(workout: Workout, id: string): Workout {
 export function moveInterval(
   workout: Workout,
   id: string,
-  newIndex: number
+  newIndex: number,
 ): Workout {
   const currentIndex = workout.intervals.findIndex((i) => i.id === id);
   if (currentIndex === -1) return workout;
 
-  const clampedIndex = Math.max(0, Math.min(newIndex, workout.intervals.length - 1));
+  const clampedIndex = Math.max(
+    0,
+    Math.min(newIndex, workout.intervals.length - 1),
+  );
   const next = [...workout.intervals];
   const [item] = next.splice(currentIndex, 1);
   next.splice(clampedIndex, 0, item);
@@ -273,7 +268,9 @@ export function moveInterval(
 }
 
 /** Expand loopers into a flat sequence of work/rest intervals for playback. */
-export function expandIntervals(intervals: Interval[]): (WorkInterval | RestInterval)[] {
+export function expandIntervals(
+  intervals: Interval[],
+): (WorkInterval | RestInterval)[] {
   const result: (WorkInterval | RestInterval)[] = [];
   let lastLooperIndex = -1;
 
@@ -289,9 +286,12 @@ export function expandIntervals(intervals: Interval[]): (WorkInterval | RestInte
   for (let i = 0; i < intervals.length; i++) {
     const item = intervals[i];
     if (item.type === "looper") {
-      const block = intervals.slice(lastLooperIndex + 1, i).filter(
-        (x): x is WorkInterval | RestInterval => x.type === "work" || x.type === "rest"
-      );
+      const block = intervals
+        .slice(lastLooperIndex + 1, i)
+        .filter(
+          (x): x is WorkInterval | RestInterval =>
+            x.type === "work" || x.type === "rest",
+        );
       const n = Math.max(2, item.repeatCount);
       for (let r = 0; r < n; r++) {
         result.push(...block);
@@ -306,7 +306,7 @@ export function expandIntervals(intervals: Interval[]): (WorkInterval | RestInte
 /** Given a raw interval id (work, rest, or looper), return the expanded interval id to use for starting playback there. */
 export function getStartIntervalIdForPlayback(
   intervals: Interval[],
-  intervalId: string
+  intervalId: string,
 ): string | undefined {
   const item = intervals.find((i) => i.id === intervalId);
   if (!item) return undefined;
@@ -318,27 +318,36 @@ export function getStartIntervalIdForPlayback(
   for (let i = 0; i < idx; i++) {
     if (intervals[i].type === "looper") lastLooperIndex = i;
   }
-  const block = intervals.slice(lastLooperIndex + 1, idx).filter(
-    (x): x is WorkInterval | RestInterval => x.type === "work" || x.type === "rest"
-  );
+  const block = intervals
+    .slice(lastLooperIndex + 1, idx)
+    .filter(
+      (x): x is WorkInterval | RestInterval =>
+        x.type === "work" || x.type === "rest",
+    );
   return block[0]?.id;
 }
 
 /** For a given expanded index, return looper progress: which iteration we're in and how many remain. */
 export function getLooperProgressAtExpandedIndex(
   intervals: Interval[],
-  expandedIndex: number
+  expandedIndex: number,
 ): Map<string, { iteration: number; total: number; remaining: number }> {
-  const result = new Map<string, { iteration: number; total: number; remaining: number }>();
+  const result = new Map<
+    string,
+    { iteration: number; total: number; remaining: number }
+  >();
   let expandedCount = 0;
   let lastLooperIndex = -1;
 
   for (let i = 0; i < intervals.length; i++) {
     const item = intervals[i];
     if (item.type === "looper") {
-      const block = intervals.slice(lastLooperIndex + 1, i).filter(
-        (x): x is WorkInterval | RestInterval => x.type === "work" || x.type === "rest"
-      );
+      const block = intervals
+        .slice(lastLooperIndex + 1, i)
+        .filter(
+          (x): x is WorkInterval | RestInterval =>
+            x.type === "work" || x.type === "rest",
+        );
       const n = Math.max(2, item.repeatCount);
       const blockSize = block.length;
 
@@ -363,8 +372,12 @@ export function getLooperProgressAtExpandedIndex(
 
 export function findCurrentIntervalAtTime(
   workout: Workout,
-  secondsFromStart: number
-): { interval: WorkInterval | RestInterval | null; index: number; offsetSeconds: number } {
+  secondsFromStart: number,
+): {
+  interval: WorkInterval | RestInterval | null;
+  index: number;
+  offsetSeconds: number;
+} {
   const intervals = expandIntervals(workout.intervals);
   let elapsed = 0;
   for (let index = 0; index < intervals.length; index++) {
@@ -383,4 +396,3 @@ export function findCurrentIntervalAtTime(
 
   return { interval: null, index: -1, offsetSeconds: 0 };
 }
-

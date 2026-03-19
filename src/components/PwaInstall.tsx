@@ -11,7 +11,8 @@ type BeforeInstallPromptEvent = Event & {
 let storedPrompt: BeforeInstallPromptEvent | null = null;
 
 export function usePwaInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => storedPrompt);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(() => storedPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIos, setIsIos] = useState(false);
 
@@ -29,12 +30,16 @@ export function usePwaInstall() {
 
     // Check if already installed (standalone mode)
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
-    const inWebView = (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const inWebView =
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsInstalled(standalone || inWebView);
 
     // iOS doesn't fire beforeinstallprompt - detect for Add to Home Screen instructions
     const ua = navigator.userAgent;
-    setIsIos(/iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+    setIsIos(
+      /iPad|iPhone|iPod/.test(ua) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
+    );
 
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
@@ -52,7 +57,8 @@ export function usePwaInstall() {
   };
 
   const canInstall = !!(deferredPrompt ?? storedPrompt) && !isInstalled;
-  const showIosInstructions = isIos && !isInstalled && !deferredPrompt && !storedPrompt;
+  const showIosInstructions =
+    isIos && !isInstalled && !deferredPrompt && !storedPrompt;
 
   return { canInstall, showIosInstructions, isInstalled, install };
 }

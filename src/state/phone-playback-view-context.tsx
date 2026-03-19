@@ -7,16 +7,19 @@ import React, {
   useState,
   useCallback,
 } from "react";
+import { usePrepEnabled } from "@/state/prep-enabled-context";
 
 const STORAGE_KEY = "pomobro:phonePlaybackView";
 const MOBILE_BREAKPOINT = 768;
 
 export type PhonePlaybackView = "cards" | "player";
 
-function getStoredView(): PhonePlaybackView {
+function getStoredView(prepEnabled: boolean): PhonePlaybackView {
   if (typeof window === "undefined") return "cards";
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "player" ? "player" : "cards";
+  if (v === "player") return "player";
+  if (v === "cards") return "cards";
+  return prepEnabled ? "player" : "cards";
 }
 
 interface PhonePlaybackViewContextValue {
@@ -34,11 +37,12 @@ export function PhonePlaybackViewProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { prepEnabled } = usePrepEnabled();
   const [view, setViewState] = useState<PhonePlaybackView>("cards");
 
   useEffect(() => {
-    setViewState(getStoredView());
-  }, []);
+    setViewState(getStoredView(prepEnabled));
+  }, [prepEnabled]);
 
   const setView = useCallback((v: PhonePlaybackView) => {
     setViewState(v);

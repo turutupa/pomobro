@@ -71,14 +71,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${plusJakarta.variable} ${syne.variable} font-sans antialiased`}
       >
-<ThemeProvider>
-        <SettingsProvider>
-          <WorkoutsProvider>
-            <PwaRegistration />
-            {children}
-          </WorkoutsProvider>
-        </SettingsProvider>
-      </ThemeProvider>
+        <ThemeProvider>
+          <SettingsProvider>
+            <WorkoutsProvider>
+              <PwaRegistration />
+              {children}
+            </WorkoutsProvider>
+          </SettingsProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

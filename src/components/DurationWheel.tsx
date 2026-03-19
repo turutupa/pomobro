@@ -32,7 +32,7 @@ export function DurationWheel({
 
   const options = Array.from(
     { length: Math.floor((max - min) / step) + 1 },
-    (_, i) => min + i * step
+    (_, i) => min + i * step,
   );
   const paddingTop = (WHEEL_HEIGHT - ROW_HEIGHT) / 2;
 
@@ -45,7 +45,7 @@ export function DurationWheel({
       const targetScroll = idx * ROW_HEIGHT;
       el.scrollTo({ top: targetScroll, behavior: "smooth" });
     },
-    [options]
+    [options],
   );
 
   useEffect(() => {
@@ -62,16 +62,13 @@ export function DurationWheel({
     if (newValue !== value) onChange(newValue);
   }, [value, onChange, options]);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const el = scrollRef.current;
-      if (!el) return;
-      el.scrollTop += -e.deltaY;
-    },
-    []
-  );
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop += -e.deltaY;
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -92,7 +89,9 @@ export function DurationWheel({
               setIsOpen(true);
             }}
             className={`flex cursor-pointer items-baseline gap-0.5 rounded-md px-2 py-1 transition-colors hover:bg-white/20 ${valueClassName}`}
-            aria-label={isOpen ? "Close duration picker" : "Open duration picker"}
+            aria-label={
+              isOpen ? "Close duration picker" : "Open duration picker"
+            }
             aria-expanded={isOpen}
             aria-haspopup="listbox"
           >
@@ -124,7 +123,8 @@ export function DurationWheel({
                 style={{
                   top: 0,
                   height: (WHEEL_HEIGHT - ROW_HEIGHT) / 2,
-                  background: "linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)",
+                  background:
+                    "linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)",
                 }}
               />
               <div
@@ -132,7 +132,8 @@ export function DurationWheel({
                 style={{
                   bottom: 0,
                   height: (WHEEL_HEIGHT - ROW_HEIGHT) / 2,
-                  background: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)",
+                  background:
+                    "linear-gradient(to top, rgba(0,0,0,0.4), transparent)",
                 }}
               />
               <div

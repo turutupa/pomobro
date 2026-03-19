@@ -76,14 +76,16 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
     case "deleteInterval": {
       const workout = deleteIntervalDomain(state.workout, action.id);
       const selectedIntervalId =
-        state.selectedIntervalId === action.id ? null : state.selectedIntervalId;
+        state.selectedIntervalId === action.id
+          ? null
+          : state.selectedIntervalId;
       return { ...state, workout, selectedIntervalId };
     }
     case "moveInterval": {
       const workout = moveIntervalDomain(
         state.workout,
         action.id,
-        action.newIndex
+        action.newIndex,
       );
       return { ...state, workout };
     }
@@ -93,7 +95,7 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
         intervals: state.workout.intervals.map((interval) =>
           interval.id === action.id
             ? ({ ...interval, ...action.patch } as Interval)
-            : interval
+            : interval,
         ),
       };
       return { ...state, workout: normalizeWorkout(workout) };
@@ -106,10 +108,7 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
           action.description === undefined
             ? state.workout.description
             : action.description,
-        sets:
-          action.sets === undefined
-            ? state.workout.sets
-            : action.sets,
+        sets: action.sets === undefined ? state.workout.sets : action.sets,
       };
       return { ...state, workout };
     }
@@ -126,7 +125,9 @@ export function WorkoutProvider({
   children: React.ReactNode;
 }) {
   const [state, dispatch] = useReducer(reducer, {
-    workout: initialWorkout ? normalizeWorkout(initialWorkout) : createEmptyWorkout(),
+    workout: initialWorkout
+      ? normalizeWorkout(initialWorkout)
+      : createEmptyWorkout(),
     selectedIntervalId: null,
     lastAddedIntervalId: null,
   });
@@ -134,9 +135,7 @@ export function WorkoutProvider({
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
   return (
-    <WorkoutContext.Provider value={value}>
-      {children}
-    </WorkoutContext.Provider>
+    <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>
   );
 }
 
@@ -161,8 +160,7 @@ export function useWorkout() {
       dispatch({ type: "addRestBetween", beforeId }),
     addLooperAfter: (afterId: string) =>
       dispatch({ type: "addLooperAfter", afterId }),
-    deleteInterval: (id: string) =>
-      dispatch({ type: "deleteInterval", id }),
+    deleteInterval: (id: string) => dispatch({ type: "deleteInterval", id }),
     moveInterval: (id: string, newIndex: number) =>
       dispatch({ type: "moveInterval", id, newIndex }),
     updateInterval: (id: string, patch: Partial<Interval>) =>
@@ -173,4 +171,3 @@ export function useWorkout() {
 
   return { ...ctx, ...actions };
 }
-

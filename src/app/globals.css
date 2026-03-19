@@ -8,16 +8,16 @@
   --card: #f2efef;
   --card-border: #e4dfdf;
   --muted: #52525b;
-  --accent: #00BD7C;
+  --accent: #00bd7c;
   --accent-foreground: #003d28;
   /* Primary palette from #00BD7C */
-  --primary: #00BD7C;
+  --primary: #00bd7c;
   --primary-50: #e6faf4;
   --primary-100: #b8f0e0;
   --primary-200: #8ae6cc;
   --primary-300: #5cd4b5;
   --primary-400: #2ec99a;
-  --primary-500: #00BD7C;
+  --primary-500: #00bd7c;
   --primary-600: #009966;
   --primary-700: #007a52;
   --primary-800: #005c3d;
@@ -31,15 +31,15 @@
   --card: #18181b;
   --card-border: #27272a;
   --muted: #a1a1aa;
-  --accent: #00BD7C;
+  --accent: #00bd7c;
   --accent-foreground: #042f2e;
-  --primary: #00BD7C;
+  --primary: #00bd7c;
   --primary-50: #e6faf4;
   --primary-100: #b8f0e0;
   --primary-200: #8ae6cc;
   --primary-300: #5cd4b5;
   --primary-400: #2ec99a;
-  --primary-500: #00BD7C;
+  --primary-500: #00bd7c;
   --primary-600: #009966;
   --primary-700: #007a52;
   --primary-800: #005c3d;
@@ -75,7 +75,11 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 /* Light mode gradient - subtle rose-tinted gray */

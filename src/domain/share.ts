@@ -11,7 +11,7 @@ export interface EncodedWorkoutBundle {
   d: string; // JSON.stringify(Workout[])
 }
 
-/** Compressed bundle (v3) - keeps URL short for QR codes */
+/** Compressed bundle (v3) - keeps URL short */
 export interface EncodedWorkoutBundleCompressed {
   v: 3;
   d: string; // LZString.compressToEncodedURIComponent(JSON.stringify(Workout[]))
@@ -34,8 +34,7 @@ function decodeBase64Url(data: string): string {
     return Buffer.from(normalized, "base64").toString("utf8");
   }
 
-  const padded =
-    normalized + "===".slice((normalized.length + 3) % 4); // restore padding if needed
+  const padded = normalized + "===".slice((normalized.length + 3) % 4); // restore padding if needed
   const decoded = atob(padded);
   return decodeURIComponent(escape(decoded));
 }
@@ -76,7 +75,9 @@ export function encodeWorkouts(workouts: Workout[]): string {
 }
 
 /** Returns single workout or array of workouts. */
-export function decodeWorkoutOrBundle(encoded: string): Workout | Workout[] | null {
+export function decodeWorkoutOrBundle(
+  encoded: string,
+): Workout | Workout[] | null {
   try {
     const json = decodeBase64Url(encoded);
     const parsed = JSON.parse(json) as
@@ -91,7 +92,10 @@ export function decodeWorkoutOrBundle(encoded: string): Workout | Workout[] | nu
     if (parsed.v === 2 && typeof parsed.d === "string") {
       const arr = JSON.parse(parsed.d) as unknown;
       if (!Array.isArray(arr)) return null;
-      const valid = arr.filter((w): w is Workout => w && typeof w === "object" && Array.isArray((w as Workout).intervals));
+      const valid = arr.filter(
+        (w): w is Workout =>
+          w && typeof w === "object" && Array.isArray((w as Workout).intervals),
+      );
       return valid.length > 0 ? valid : null;
     }
     if (parsed.v === 3 && typeof parsed.d === "string") {
@@ -99,7 +103,10 @@ export function decodeWorkoutOrBundle(encoded: string): Workout | Workout[] | nu
       if (!decompressed) return null;
       const arr = JSON.parse(decompressed) as unknown;
       if (!Array.isArray(arr)) return null;
-      const valid = arr.filter((w): w is Workout => w && typeof w === "object" && Array.isArray((w as Workout).intervals));
+      const valid = arr.filter(
+        (w): w is Workout =>
+          w && typeof w === "object" && Array.isArray((w as Workout).intervals),
+      );
       return valid.length > 0 ? valid : null;
     }
     return null;
@@ -107,4 +114,3 @@ export function decodeWorkoutOrBundle(encoded: string): Workout | Workout[] | nu
     return null;
   }
 }
-

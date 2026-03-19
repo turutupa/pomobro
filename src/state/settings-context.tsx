@@ -50,12 +50,15 @@ interface SettingsContextValue {
   setBeepEnabledByDefault: (v: boolean) => void;
 }
 
-const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
+const SettingsContext = createContext<SettingsContextValue | undefined>(
+  undefined,
+);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [beepVolume, setBeepVolumeState] = useState(1);
   const [voiceVolume, setVoiceVolumeState] = useState(1);
-  const [voiceEnabledByDefault, setVoiceEnabledByDefaultState] = useState(false);
+  const [voiceEnabledByDefault, setVoiceEnabledByDefaultState] =
+    useState(false);
   const [beepEnabledByDefault, setBeepEnabledByDefaultState] = useState(true);
 
   useEffect(() => {

@@ -13,8 +13,8 @@
 
 - **Voice-guided intervals** — Spoken countdowns, halfway cues, and final countdowns so you can keep your eyes on the workout
 - **Beeps & chimes** — Optional audio cues per interval (beep, chime, bell)
-- **Shareable workouts** — Export as URL or QR code. Scan on your phone. Done.
-- **Send to phone** — Sync all your routines desktop → phone with one QR scan. No account required.
+- **Shareable workouts** — Export as URL. Copy the link and open it on your phone. Done.
+- **Send to phone** — Sync all your routines desktop → phone by copying the URL. No account required.
 - **Dark mode** — Because night owls exist
 
 ## Quick start
@@ -32,4 +32,4 @@ Next.js 16 · React 19 · Tailwind CSS · TypeScript
 
 ---
 
-*Stay focused. Stay bro.*
+_Stay focused. Stay bro._
