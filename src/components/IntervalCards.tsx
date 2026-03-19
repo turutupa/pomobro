@@ -64,14 +64,9 @@ function getLooperBorderColor(
   intervalId: string,
   intervals: Interval[],
 ): string | undefined {
-  const idx = intervals.findIndex((i) => i.id === intervalId);
-  if (idx === -1) return undefined;
-  for (let i = idx + 1; i < intervals.length; i++) {
-    if (intervals[i].type === "looper") {
-      return getLooperColor(intervals[i].id, intervals);
-    }
-  }
-  return undefined;
+  // Only show the looper border when this card is actually inside that looper's block.
+  const looper = getLooperForInterval(intervals, intervalId);
+  return looper ? getLooperColor(looper.id, intervals) : undefined;
 }
 
 function getLuminance(hex: string): number {
