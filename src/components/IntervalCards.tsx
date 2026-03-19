@@ -2076,6 +2076,22 @@ export function IntervalEditorList() {
   > = [];
   for (let i = 0; i < intervals.length; i++) {
     const interval = intervals[i];
+    // If a looper's block is empty (e.g. the only included card was deleted),
+    // we still want to render the drag handle so the user can re-expand it.
+    if (interval.type === "looper") {
+      const block = getLooperBlock(intervals, interval);
+      if (block.length === 0) {
+        renderGroups.push({
+          type: "looper",
+          start: i,
+          end: i,
+          looper: interval,
+        });
+      } else {
+        renderGroups.push({ type: "standalone", index: i });
+      }
+      continue;
+    }
     if (
       (interval.type === "work" || interval.type === "rest") &&
       getLooperIfTopOfBlock(intervals, interval.id)
