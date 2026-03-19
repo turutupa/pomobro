@@ -118,7 +118,9 @@ function PrepIntervalCard({
 }: PrepIntervalCardProps) {
   const [expanded, setExpanded] = useState(false);
   const { state, selectInterval, clearLastAddedIntervalId } = useWorkout();
+  const { state: player } = usePlayer();
   const color = PREP_BG_COLOR;
+  const inPlaybackMode = player.isRunning || player.isPaused;
 
   useEffect(() => {
     if (state.lastAddedIntervalId === interval.id) {
@@ -147,7 +149,7 @@ function PrepIntervalCard({
         className={`flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 transition-opacity ${
           isCurrent
             ? "border-zinc-400 py-5 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
-            : "border-transparent py-3 opacity-70"
+            : `border-transparent py-3 ${inPlaybackMode ? "opacity-70" : "opacity-100"}`
         }`}
         style={{ backgroundColor: color }}
       >
@@ -547,10 +549,12 @@ function WorkIntervalCard({
   onUpdate,
 }: WorkIntervalCardProps) {
   const { state, clearLastAddedIntervalId } = useWorkout();
+  const { state: player } = usePlayer();
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState(false);
   const color = interval.color ?? DEFAULT_WORK_COLOR;
   const isLight = getLuminance(color) > 0.6;
+  const inPlaybackMode = player.isRunning || player.isPaused;
   const textClass = isLight ? "text-zinc-950" : "text-white";
   const mutedClass = isLight ? "text-zinc-700" : "text-white/80";
 
@@ -572,7 +576,7 @@ function WorkIntervalCard({
         className={`flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 transition-opacity ${
           isCurrent
             ? "border-zinc-400 py-5 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
-            : "border-transparent py-3 opacity-70"
+            : `border-transparent py-3 ${inPlaybackMode ? "opacity-70" : "opacity-100"}`
         }`}
         style={{
           backgroundColor: color,
@@ -1086,8 +1090,10 @@ function RestIntervalCard({
   onUpdate,
 }: RestIntervalCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const { state: player } = usePlayer();
   const color = interval.color ?? DEFAULT_REST_COLOR;
   const isLight = getLuminance(color) > 0.6;
+  const inPlaybackMode = player.isRunning || player.isPaused;
   const textClass = isLight ? "text-zinc-950" : "text-white";
   const mutedClass = isLight ? "text-zinc-700" : "text-white/80";
 
@@ -1102,7 +1108,7 @@ function RestIntervalCard({
         className={`flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border-2 px-4 transition-opacity ${
           isCurrent
             ? "border-zinc-400 py-5 md:ring-2 md:ring-zinc-400 md:ring-offset-2 dark:border-zinc-500 dark:md:ring-zinc-500 dark:md:ring-offset-zinc-950"
-            : "border-transparent py-3 opacity-70"
+            : `border-transparent py-3 ${inPlaybackMode ? "opacity-70" : "opacity-100"}`
         }`}
         style={{
           backgroundColor: color,
@@ -1562,6 +1568,8 @@ function LooperIntervalCard({
   onUpdate,
 }: LooperIntervalCardProps) {
   const repeatCount = Math.max(2, interval.repeatCount);
+  const { state: player } = usePlayer();
+  const inPlaybackMode = player.isRunning || player.isPaused;
   const looperColor = getLooperColor(interval.id, intervals);
 
   if (isPlaying) {
@@ -1572,7 +1580,9 @@ function LooperIntervalCard({
     const mid = h / 2;
     return (
       <div
-        className={`flex w-full flex-col gap-1 py-2 transition-opacity ${looperProgress ? "" : "opacity-70"}`}
+        className={`flex w-full flex-col gap-1 py-2 transition-opacity ${
+          inPlaybackMode ? (looperProgress ? "" : "opacity-70") : ""
+        }`}
         style={{ color: looperColor }}
       >
         <div className="flex w-full items-center gap-2">
