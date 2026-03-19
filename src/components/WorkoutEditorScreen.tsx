@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FaPause, FaPlay, FaTh, FaClock, FaUndo, FaThList, FaPen } from "react-icons/fa";
+import {
+  FaPause,
+  FaPlay,
+  FaTh,
+  FaClock,
+  FaUndo,
+  FaThList,
+  FaPen,
+} from "react-icons/fa";
 import {
   expandIntervals,
   type WorkInterval,
@@ -13,7 +21,10 @@ import {
   usePhonePlaybackView,
   useIsMobile,
 } from "@/state/phone-playback-view-context";
-import { PreviewModeProvider, usePreviewMode } from "@/state/preview-mode-context";
+import {
+  PreviewModeProvider,
+  usePreviewMode,
+} from "@/state/preview-mode-context";
 import { WorkoutProvider, useWorkout } from "@/state/workout-context";
 import { useWorkouts } from "@/state/workouts-context";
 import { useEffect, useRef, useLayoutEffect } from "react";
@@ -48,15 +59,15 @@ export function WorkoutEditorScreen() {
 
   return (
     <PreviewModeProvider>
-        <WorkoutProvider key={currentWorkout.id} initialWorkout={currentWorkout}>
-          <PlayerProvider workout={currentWorkout}>
-            <PhonePlaybackViewProvider>
-              <WorkoutEditorSync />
-              <WorkoutEditorContent />
-            </PhonePlaybackViewProvider>
-          </PlayerProvider>
-        </WorkoutProvider>
-      </PreviewModeProvider>
+      <WorkoutProvider key={currentWorkout.id} initialWorkout={currentWorkout}>
+        <PlayerProvider workout={currentWorkout}>
+          <PhonePlaybackViewProvider>
+            <WorkoutEditorSync />
+            <WorkoutEditorContent />
+          </PhonePlaybackViewProvider>
+        </PlayerProvider>
+      </WorkoutProvider>
+    </PreviewModeProvider>
   );
 }
 
@@ -111,9 +122,9 @@ function WorkoutEditorContent() {
               type="button"
               onClick={togglePreviewMode}
               className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors ${
-              previewMode
-                ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400"
-                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                previewMode
+                  ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400"
+                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
               }`}
               aria-label={previewMode ? "Edit mode" : "Preview layout"}
               title={previewMode ? "Edit mode" : "Preview layout"}

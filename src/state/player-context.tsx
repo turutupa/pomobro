@@ -80,10 +80,9 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       const safeIdx = Math.max(0, Math.min(idx, intervals.length - 1));
       const target = intervals[safeIdx];
       // When resuming from pause, keep remaining time; otherwise use current workout's duration
-      const secondsRemaining =
-        state.isPaused
-          ? state.secondsRemainingInInterval
-          : target.durationSeconds;
+      const secondsRemaining = state.isPaused
+        ? state.secondsRemainingInInterval
+        : target.durationSeconds;
       return {
         ...state,
         currentIndex: safeIdx,

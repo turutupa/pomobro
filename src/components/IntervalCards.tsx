@@ -127,7 +127,12 @@ function PrepIntervalCard({
       const el = document.getElementById(`interval-${interval.id}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [state.lastAddedIntervalId, interval.id, selectInterval, clearLastAddedIntervalId]);
+  }, [
+    state.lastAddedIntervalId,
+    interval.id,
+    selectInterval,
+    clearLastAddedIntervalId,
+  ]);
   const textClass = "text-white";
   const mutedClass = "text-white/80";
 
@@ -181,7 +186,7 @@ function PrepIntervalCard({
               Get ready
             </div>
             {!expanded && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
+              <div className="mt-2 flex w-full flex-wrap items-center gap-1.5 px-3">
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -194,7 +199,7 @@ function PrepIntervalCard({
                         },
                       });
                     }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                       interval.voice?.mute
                         ? "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         : "bg-black/35 text-white hover:bg-black/45"
@@ -210,28 +215,31 @@ function PrepIntervalCard({
                         onUpdate({
                           voice: {
                             ...interval.voice,
-                            announceStart: !(interval.voice?.announceStart ?? true),
+                            announceStart: !(
+                              interval.voice?.announceStart ?? true
+                            ),
                           },
                         });
                       }}
-                      className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                         (interval.voice?.announceStart ?? true)
                           ? "bg-black/35 text-white hover:bg-black/45"
                           : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                       }`}
                     >
-                      Start {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                      Start{" "}
+                      {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 border-l border-white/30 pl-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onUpdate({ beep: !interval.beep });
                     }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                       interval.beep
                         ? "bg-black/35 text-white hover:bg-black/45"
                         : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
@@ -629,7 +637,7 @@ function WorkIntervalCard({
               onClick={(e) => e.stopPropagation()}
             />
             {!expanded && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
+              <div className="mt-2 flex w-full flex-wrap items-center gap-1.5 px-3">
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -642,7 +650,7 @@ function WorkIntervalCard({
                         },
                       });
                     }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                       isLight
                         ? interval.voice?.mute
                           ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
@@ -663,11 +671,13 @@ function WorkIntervalCard({
                           onUpdate({
                             voice: {
                               ...interval.voice,
-                              announceStart: !(interval.voice?.announceStart ?? true),
+                              announceStart: !(
+                                interval.voice?.announceStart ?? true
+                              ),
                             },
                           });
                         }}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                           isLight
                             ? (interval.voice?.announceStart ?? true)
                               ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -677,7 +687,8 @@ function WorkIntervalCard({
                               : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         }`}
                       >
-                        Start {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                        Start{" "}
+                        {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
                       </button>
                       <button
                         type="button"
@@ -686,11 +697,13 @@ function WorkIntervalCard({
                           onUpdate({
                             voice: {
                               ...interval.voice,
-                              announceHalfway: !(interval.voice?.announceHalfway ?? false),
+                              announceHalfway: !(
+                                interval.voice?.announceHalfway ?? false
+                              ),
                             },
                           });
                         }}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                           isLight
                             ? (interval.voice?.announceHalfway ?? false)
                               ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -700,7 +713,10 @@ function WorkIntervalCard({
                               : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         }`}
                       >
-                        Halfway {(interval.voice?.announceHalfway ?? false) ? "On" : "Off"}
+                        Halfway{" "}
+                        {(interval.voice?.announceHalfway ?? false)
+                          ? "On"
+                          : "Off"}
                       </button>
                       <button
                         type="button"
@@ -710,11 +726,13 @@ function WorkIntervalCard({
                             voice: {
                               ...interval.voice,
                               finalCountdownSeconds:
-                                (interval.voice?.finalCountdownSeconds ?? 3) > 0 ? 0 : 3,
+                                (interval.voice?.finalCountdownSeconds ?? 3) > 0
+                                  ? 0
+                                  : 3,
                             },
                           });
                         }}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                           isLight
                             ? (interval.voice?.finalCountdownSeconds ?? 3) > 0
                               ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -724,16 +742,15 @@ function WorkIntervalCard({
                               : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         }`}
                       >
-                        End {((interval.voice?.finalCountdownSeconds ?? 3) > 0) ? "On" : "Off"}
+                        End{" "}
+                        {(interval.voice?.finalCountdownSeconds ?? 3) > 0
+                          ? "On"
+                          : "Off"}
                       </button>
                     </>
                   )}
                 </div>
-                <div
-                  className={`flex items-center gap-1.5 border-l pl-2 ${
-                    isLight ? "border-zinc-400/50" : "border-white/30"
-                  }`}
-                >
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -745,7 +762,7 @@ function WorkIntervalCard({
                         },
                       });
                     }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                       isLight
                         ? interval.voice?.beep
                           ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -1138,7 +1155,7 @@ function RestIntervalCard({
               Rest
             </div>
             {!expanded && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
+              <div className="mt-2 flex w-full flex-wrap items-center gap-1.5 px-3">
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -1151,7 +1168,7 @@ function RestIntervalCard({
                         },
                       });
                     }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                       isLight
                         ? interval.voice?.mute
                           ? "bg-zinc-400/30 text-zinc-500 opacity-70 hover:bg-zinc-400/40"
@@ -1172,11 +1189,13 @@ function RestIntervalCard({
                           onUpdate({
                             voice: {
                               ...interval.voice,
-                              announceStart: !(interval.voice?.announceStart ?? true),
+                              announceStart: !(
+                                interval.voice?.announceStart ?? true
+                              ),
                             },
                           });
                         }}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                           isLight
                             ? (interval.voice?.announceStart ?? true)
                               ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -1186,7 +1205,8 @@ function RestIntervalCard({
                               : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         }`}
                       >
-                        Start {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
+                        Start{" "}
+                        {(interval.voice?.announceStart ?? true) ? "On" : "Off"}
                       </button>
                       <button
                         type="button"
@@ -1195,11 +1215,13 @@ function RestIntervalCard({
                           onUpdate({
                             voice: {
                               ...interval.voice,
-                              announceHalfway: !(interval.voice?.announceHalfway ?? false),
+                              announceHalfway: !(
+                                interval.voice?.announceHalfway ?? false
+                              ),
                             },
                           });
                         }}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                           isLight
                             ? (interval.voice?.announceHalfway ?? false)
                               ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -1209,7 +1231,10 @@ function RestIntervalCard({
                               : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         }`}
                       >
-                        Halfway {(interval.voice?.announceHalfway ?? false) ? "On" : "Off"}
+                        Halfway{" "}
+                        {(interval.voice?.announceHalfway ?? false)
+                          ? "On"
+                          : "Off"}
                       </button>
                       <button
                         type="button"
@@ -1219,11 +1244,13 @@ function RestIntervalCard({
                             voice: {
                               ...interval.voice,
                               finalCountdownSeconds:
-                                (interval.voice?.finalCountdownSeconds ?? 3) > 0 ? 0 : 3,
+                                (interval.voice?.finalCountdownSeconds ?? 3) > 0
+                                  ? 0
+                                  : 3,
                             },
                           });
                         }}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                           isLight
                             ? (interval.voice?.finalCountdownSeconds ?? 3) > 0
                               ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -1233,23 +1260,22 @@ function RestIntervalCard({
                               : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                         }`}
                       >
-                        End {((interval.voice?.finalCountdownSeconds ?? 3) > 0) ? "On" : "Off"}
+                        End{" "}
+                        {(interval.voice?.finalCountdownSeconds ?? 3) > 0
+                          ? "On"
+                          : "Off"}
                       </button>
                     </>
                   )}
                 </div>
-                <div
-                  className={`flex items-center gap-1.5 border-l pl-2 ${
-                    isLight ? "border-zinc-400/50" : "border-white/30"
-                  }`}
-                >
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onUpdate({ beep: !interval.beep });
                     }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors whitespace-nowrap ${
                       isLight
                         ? interval.beep
                           ? "bg-zinc-900/50 text-zinc-950 hover:bg-zinc-900/60"
@@ -1259,7 +1285,8 @@ function RestIntervalCard({
                           : "bg-black/20 text-white/50 opacity-80 hover:bg-black/25"
                     }`}
                   >
-                    Beep {interval.beep ? (interval.beepSound ?? "beep") : "Off"}
+                    Beep{" "}
+                    {interval.beep ? (interval.beepSound ?? "beep") : "Off"}
                   </button>
                 </div>
               </div>
@@ -1802,11 +1829,13 @@ function LooperBlockHandle({
     document.addEventListener("pointerup", onPointerUp);
     document.body.style.cursor = "ns-resize";
     document.body.style.userSelect = "none";
+    document.body.style.touchAction = "none";
     return () => {
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      document.body.style.touchAction = "";
     };
   }, [isDragging, extendableIds, currentBlock, onUpdate]);
 
@@ -1826,10 +1855,13 @@ function LooperBlockHandle({
           e.preventDefault();
         }
       }}
-      className={`flex cursor-ns-resize items-center justify-center py-1.5 transition-opacity hover:opacity-100 ${
+      style={{
+        touchAction: "none",
+        backgroundColor: looperColor,
+      }}
+      className={`flex min-h-[44px] cursor-ns-resize items-center justify-center py-3 transition-opacity hover:opacity-100 md:min-h-0 md:py-1.5 ${
         isDragging ? "opacity-100" : "opacity-80"
       }`}
-      style={{ backgroundColor: looperColor }}
       aria-label="Drag to extend or shrink repeat block"
       title="Drag up to include more intervals, drag down to exclude"
     >
@@ -2084,119 +2116,110 @@ export function IntervalEditorList() {
           return (
             <div key={group.looper.id} className="flex flex-col gap-1">
               <div
+                data-looper-block
                 className="flex flex-col gap-1 rounded-2xl p-2"
                 style={{ backgroundColor: looperColor }}
               >
-              {!showCompactView && (
-                <LooperBlockHandle
-                  looper={group.looper}
-                  intervals={intervals}
-                  extendableIds={getLooperExtendableIds(
-                    intervals,
-                    group.looper.id,
-                  )}
-                  currentBlock={
-                    group.looper.wrapIntervalIds ??
-                    getLooperBlock(intervals, group.looper).map((x) => x.id)
-                  }
-                  onUpdate={(ids) =>
-                    updateLooperBlock(group.looper.id, ids)
-                  }
-                  looperColor={looperColor}
-                />
-              )}
-              {Array.from(
-                { length: group.end - group.start + 1 },
-                (_, k) => group.start + k,
-              ).map((index) => {
-                const interval = intervals[index];
-                const isSelected = state.selectedIntervalId === interval.id;
-                const isCurrent =
-                  isInPlaybackMode &&
-                  (interval.type === "work" ||
-                    interval.type === "rest" ||
-                    interval.type === "prep") &&
-                  currentPlaybackInterval?.id === interval.id;
+                {!showCompactView && (
+                  <LooperBlockHandle
+                    looper={group.looper}
+                    intervals={intervals}
+                    extendableIds={getLooperExtendableIds(
+                      intervals,
+                      group.looper.id,
+                    )}
+                    currentBlock={
+                      group.looper.wrapIntervalIds ??
+                      getLooperBlock(intervals, group.looper).map((x) => x.id)
+                    }
+                    onUpdate={(ids) => updateLooperBlock(group.looper.id, ids)}
+                    looperColor={looperColor}
+                  />
+                )}
+                {Array.from(
+                  { length: group.end - group.start + 1 },
+                  (_, k) => group.start + k,
+                ).map((index) => {
+                  const interval = intervals[index];
+                  const isSelected = state.selectedIntervalId === interval.id;
+                  const isCurrent =
+                    isInPlaybackMode &&
+                    (interval.type === "work" ||
+                      interval.type === "rest" ||
+                      interval.type === "prep") &&
+                    currentPlaybackInterval?.id === interval.id;
 
-                return (
-                  <div
-                    key={interval.id}
-                    id={`interval-${interval.id}`}
-                    data-interval-id={interval.id}
-                    className="flex flex-col"
-                  >
-                    {isWork(interval) ? (
-                      <WorkIntervalCard
-                        interval={interval}
-                        isSelected={isSelected}
-                        isCurrent={isCurrent}
-                        isPlaying={showCompactView}
-                        looperBorderColor={getLooperBorderColor(
-                          interval.id,
-                          intervals,
-                        )}
-                        onSelect={() => handleCardSelect(interval.id)}
-                        onPlayFromHere={() =>
-                          handlePlayFromCard(interval.id)
-                        }
-                        onDelete={() => deleteInterval(interval.id)}
-                        onUpdate={(p) => updateInterval(interval.id, p)}
-                      />
-                    ) : isLooper(interval) ? (
-                      <LooperIntervalCard
-                        interval={interval}
-                        isSelected={isSelected}
-                        isCurrent={isCurrent}
-                        isPlaying={showCompactView}
-                        intervals={intervals}
-                        looperProgress={looperProgressMap.get(interval.id)}
-                        onSelect={() => handleCardSelect(interval.id)}
-                        onPlayFromHere={() =>
-                          handlePlayFromCard(interval.id)
-                        }
-                        onDelete={() => deleteInterval(interval.id)}
-                        onUpdate={(p) => updateInterval(interval.id, p)}
-                      />
-                    ) : isPrep(interval) ? (
-                      <PrepIntervalCard
-                        interval={interval}
-                        isSelected={isSelected}
-                        isCurrent={isCurrent}
-                        isPlaying={showCompactView}
-                        onSelect={() => handleCardSelect(interval.id)}
-                        onPlayFromHere={() =>
-                          handlePlayFromCard(interval.id)
-                        }
-                        onDelete={() => deleteInterval(interval.id)}
-                        onUpdate={(p) => updateInterval(interval.id, p)}
-                      />
-                    ) : (
-                      <RestIntervalCard
-                        interval={interval}
-                        isSelected={isSelected}
-                        isCurrent={isCurrent}
-                        isPlaying={showCompactView}
-                        looperBorderColor={getLooperBorderColor(
-                          interval.id,
-                          intervals,
-                        )}
-                        onSelect={() => handleCardSelect(interval.id)}
-                        onPlayFromHere={() =>
-                          handlePlayFromCard(interval.id)
-                        }
-                        onDelete={() => deleteInterval(interval.id)}
-                        onUpdate={(p) => updateInterval(interval.id, p)}
-                      />
-                    )}
-                    {!showCompactView && index < group.end && (
-                      <Connector
-                        aboveId={interval.id}
-                        belowId={intervals[index + 1].id}
-                      />
-                    )}
-                  </div>
-                );
-              })}
+                  return (
+                    <div
+                      key={interval.id}
+                      id={`interval-${interval.id}`}
+                      data-interval-id={interval.id}
+                      className="flex flex-col"
+                    >
+                      {isWork(interval) ? (
+                        <WorkIntervalCard
+                          interval={interval}
+                          isSelected={isSelected}
+                          isCurrent={isCurrent}
+                          isPlaying={showCompactView}
+                          looperBorderColor={getLooperBorderColor(
+                            interval.id,
+                            intervals,
+                          )}
+                          onSelect={() => handleCardSelect(interval.id)}
+                          onPlayFromHere={() => handlePlayFromCard(interval.id)}
+                          onDelete={() => deleteInterval(interval.id)}
+                          onUpdate={(p) => updateInterval(interval.id, p)}
+                        />
+                      ) : isLooper(interval) ? (
+                        <LooperIntervalCard
+                          interval={interval}
+                          isSelected={isSelected}
+                          isCurrent={isCurrent}
+                          isPlaying={showCompactView}
+                          intervals={intervals}
+                          looperProgress={looperProgressMap.get(interval.id)}
+                          onSelect={() => handleCardSelect(interval.id)}
+                          onPlayFromHere={() => handlePlayFromCard(interval.id)}
+                          onDelete={() => deleteInterval(interval.id)}
+                          onUpdate={(p) => updateInterval(interval.id, p)}
+                        />
+                      ) : isPrep(interval) ? (
+                        <PrepIntervalCard
+                          interval={interval}
+                          isSelected={isSelected}
+                          isCurrent={isCurrent}
+                          isPlaying={showCompactView}
+                          onSelect={() => handleCardSelect(interval.id)}
+                          onPlayFromHere={() => handlePlayFromCard(interval.id)}
+                          onDelete={() => deleteInterval(interval.id)}
+                          onUpdate={(p) => updateInterval(interval.id, p)}
+                        />
+                      ) : (
+                        <RestIntervalCard
+                          interval={interval}
+                          isSelected={isSelected}
+                          isCurrent={isCurrent}
+                          isPlaying={showCompactView}
+                          looperBorderColor={getLooperBorderColor(
+                            interval.id,
+                            intervals,
+                          )}
+                          onSelect={() => handleCardSelect(interval.id)}
+                          onPlayFromHere={() => handlePlayFromCard(interval.id)}
+                          onDelete={() => deleteInterval(interval.id)}
+                          onUpdate={(p) => updateInterval(interval.id, p)}
+                        />
+                      )}
+                      {!showCompactView && index < group.end && (
+                        <Connector
+                          aboveId={interval.id}
+                          belowId={intervals[index + 1].id}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               {!showCompactView && (
                 <Connector
@@ -2229,10 +2252,7 @@ export function IntervalEditorList() {
                 isSelected={isSelected}
                 isCurrent={isCurrent}
                 isPlaying={showCompactView}
-                looperBorderColor={getLooperBorderColor(
-                  interval.id,
-                  intervals,
-                )}
+                looperBorderColor={getLooperBorderColor(interval.id, intervals)}
                 onSelect={() => handleCardSelect(interval.id)}
                 onPlayFromHere={() => handlePlayFromCard(interval.id)}
                 onDelete={() => deleteInterval(interval.id)}
@@ -2268,10 +2288,7 @@ export function IntervalEditorList() {
                 isSelected={isSelected}
                 isCurrent={isCurrent}
                 isPlaying={showCompactView}
-                looperBorderColor={getLooperBorderColor(
-                  interval.id,
-                  intervals,
-                )}
+                looperBorderColor={getLooperBorderColor(interval.id, intervals)}
                 onSelect={() => handleCardSelect(interval.id)}
                 onPlayFromHere={() => handlePlayFromCard(interval.id)}
                 onDelete={() => deleteInterval(interval.id)}

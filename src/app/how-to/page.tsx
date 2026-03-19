@@ -2,7 +2,8 @@ import Link from "next/link";
 
 export const metadata = {
   title: "How to",
-  description: "How to use Pomobro — voice options, beeps, circuits, and loopers.",
+  description:
+    "How to use Pomobro — voice options, beeps, circuits, and loopers.",
 };
 
 export default function HowToPage() {
@@ -87,8 +88,8 @@ export default function HowToPage() {
             starting).
           </li>
           <li>
-            Add a <strong>Workout</strong> card — name it (e.g. &quot;Push-ups&quot;),
-            set duration (e.g. 45 sec).
+            Add a <strong>Workout</strong> card — name it (e.g.
+            &quot;Push-ups&quot;), set duration (e.g. 45 sec).
           </li>
           <li>
             Add a <strong>Rest</strong> card — set duration (e.g. 15 sec).
@@ -109,8 +110,8 @@ export default function HowToPage() {
           Looper (repeat block)
         </h2>
         <p className="mb-3 text-sm leading-relaxed">
-          A <strong>Repeat</strong> card repeats the block of cards above it. The
-          number is the <em>total</em> times the block runs.
+          A <strong>Repeat</strong> card repeats the block of cards above it.
+          The number is the <em>total</em> times the block runs.
         </p>
         <p className="mb-3 text-sm leading-relaxed">
           Example: Work A (30s) → Rest (10s) → Repeat 3× means: Work A, Rest,

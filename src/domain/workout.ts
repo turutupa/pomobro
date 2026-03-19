@@ -65,7 +65,11 @@ export interface PrepInterval extends BaseInterval {
   voice?: VoiceSettings;
 }
 
-export type Interval = WorkInterval | RestInterval | LooperInterval | PrepInterval;
+export type Interval =
+  | WorkInterval
+  | RestInterval
+  | LooperInterval
+  | PrepInterval;
 
 export interface Workout {
   id: string;
@@ -141,7 +145,11 @@ export function normalizeWorkout(workout: Workout): Workout {
       normalized.push(interval);
       continue;
     }
-    if (interval.type === "prep" || interval.type === "work" || interval.type === "rest") {
+    if (
+      interval.type === "prep" ||
+      interval.type === "work" ||
+      interval.type === "rest"
+    ) {
       if (interval.durationSeconds <= 0) continue;
       normalized.push(interval);
     }

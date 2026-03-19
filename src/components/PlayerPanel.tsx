@@ -4,7 +4,12 @@ import { useRef, useLayoutEffect } from "react";
 import { FaPlay, FaPause, FaUndo } from "react-icons/fa";
 import { useWorkout } from "@/state/workout-context";
 import { usePlayer } from "@/state/player-context";
-import { WorkInterval, RestInterval, PrepInterval, expandIntervals } from "@/domain/workout";
+import {
+  WorkInterval,
+  RestInterval,
+  PrepInterval,
+  expandIntervals,
+} from "@/domain/workout";
 import { resumeAudioContext } from "@/voice/BeepEngine";
 
 function getLuminance(hex: string): number {
@@ -103,10 +108,7 @@ function InnerPlayer({
   const hasMoreSets =
     isInPlaybackMode && sets > 1 && player.currentSetIndex < sets - 1;
   const inPreparation =
-    player.isRunning &&
-    current &&
-    "type" in current &&
-    current.type === "prep";
+    player.isRunning && current && "type" in current && current.type === "prep";
   const firstInterval = playbackIntervals[0];
   const showGetReadyAsDefault =
     !isInPlaybackMode &&
@@ -114,15 +116,18 @@ function InnerPlayer({
     firstInterval &&
     "type" in firstInterval &&
     firstInterval.type === "prep";
-  const next = showGetReadyAsDefault || inPreparation
-    ? (firstInterval && "type" in firstInterval && firstInterval.type === "prep"
-        ? playbackIntervals[1] ?? null
-        : firstInterval ?? null)
-    : effectiveIndex >= 0 && effectiveIndex < playbackIntervals.length - 1
-      ? playbackIntervals[effectiveIndex + 1]
-      : isLastInterval && hasMoreSets
-        ? playbackIntervals[0]
-        : null;
+  const next =
+    showGetReadyAsDefault || inPreparation
+      ? firstInterval &&
+        "type" in firstInterval &&
+        firstInterval.type === "prep"
+        ? (playbackIntervals[1] ?? null)
+        : (firstInterval ?? null)
+      : effectiveIndex >= 0 && effectiveIndex < playbackIntervals.length - 1
+        ? playbackIntervals[effectiveIndex + 1]
+        : isLastInterval && hasMoreSets
+          ? playbackIntervals[0]
+          : null;
 
   const showingGetReady = inPreparation || showGetReadyAsDefault;
   const prepTotal =

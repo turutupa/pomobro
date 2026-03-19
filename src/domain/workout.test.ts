@@ -125,10 +125,26 @@ describe("expandIntervals and looper", () => {
     const map1 = getLooperProgressAtExpandedIndex(workout.intervals, 1);
     const map2 = getLooperProgressAtExpandedIndex(workout.intervals, 2);
     const map3 = getLooperProgressAtExpandedIndex(workout.intervals, 3);
-    expect(map0.get("looper")).toEqual({ iteration: 1, total: 2, remaining: 2 });
-    expect(map1.get("looper")).toEqual({ iteration: 1, total: 2, remaining: 2 });
-    expect(map2.get("looper")).toEqual({ iteration: 2, total: 2, remaining: 1 });
-    expect(map3.get("looper")).toEqual({ iteration: 2, total: 2, remaining: 1 });
+    expect(map0.get("looper")).toEqual({
+      iteration: 1,
+      total: 2,
+      remaining: 2,
+    });
+    expect(map1.get("looper")).toEqual({
+      iteration: 1,
+      total: 2,
+      remaining: 2,
+    });
+    expect(map2.get("looper")).toEqual({
+      iteration: 2,
+      total: 2,
+      remaining: 1,
+    });
+    expect(map3.get("looper")).toEqual({
+      iteration: 2,
+      total: 2,
+      remaining: 1,
+    });
   });
 
   it("total duration matches expanded sequence", () => {
