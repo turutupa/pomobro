@@ -148,7 +148,7 @@ function WorkoutEditorContent() {
 
       <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-2 pb-0 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
         <section
-          className={`min-h-0 w-full py-2 px-1 pb-40 md:scrollbar-thin md:overflow-y-auto md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
+          className={`scrollbar-thin min-h-0 w-full py-2 px-1 pb-40 md:overflow-y-auto md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
         >
           <IntervalEditorList />
         </section>
