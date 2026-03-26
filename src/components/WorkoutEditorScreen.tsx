@@ -173,8 +173,14 @@ function WorkoutEditorContent() {
             <SettingsDropdown workout={workoutState.workout} />
           </div>
         </div>
-        {/* Hide total on mobile when scrolled for compact header */}
-        {!(isMobile && scrolled) && <WorkoutHeaderTotal />}
+        {/* Collapse total on mobile when scrolled — pure CSS transition, no mount/unmount */}
+        <div
+          className={`overflow-hidden transition-all duration-200 ${
+            isMobile && scrolled ? "max-h-0 opacity-0" : "max-h-8 opacity-100"
+          }`}
+        >
+          <WorkoutHeaderTotal />
+        </div>
       </header>
 
       <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-2 pb-0 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
