@@ -74,6 +74,8 @@ html {
   /* Use dynamic viewport height so mobile browsers account for
      the collapsible URL bar instead of the fixed 100vh value. */
   --app-h: 100dvh;
+  /* Prevent white flash in safe area (home indicator region) */
+  background: var(--background);
 }
 
 body {
@@ -87,10 +89,16 @@ body {
 }
 
 /* Light mode gradient - subtle rose-tinted gray */
+html:not(.dark) {
+  background: #dcd6d6; /* matches gradient end so safe-area has no white */
+}
 html:not(.dark) body {
   background: linear-gradient(180deg, #eae6e6 0%, #e3dede 50%, #dcd6d6 100%);
 }
 
+html.dark {
+  background: #27272a; /* matches dark gradient end */
+}
 html.dark body {
   background: linear-gradient(180deg, #0c0c0e 0%, #18181b 50%, #27272a 100%);
 }

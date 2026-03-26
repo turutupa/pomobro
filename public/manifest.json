@@ -3,7 +3,7 @@
   "short_name": "Pomobro",
   "description": "Voice-guided interval timer for workouts and focus sessions",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#fafafa",
   "theme_color": "#0d9488",
   "orientation": "portrait-primary",

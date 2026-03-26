@@ -134,7 +134,7 @@ function WorkoutEditorContent() {
   }, [isMobile]);
 
   return (
-    <div ref={scrollRef} className={`flex h-[100dvh] w-full flex-col text-zinc-900 dark:text-zinc-100 md:overflow-hidden ${isMobile && view === "player" ? "overflow-hidden" : "overflow-y-auto"}`}>
+    <div ref={scrollRef} className={`flex h-[100dvh] w-full flex-col text-zinc-900 dark:text-zinc-100 md:overflow-hidden [padding-bottom:env(safe-area-inset-bottom)] ${isMobile && view === "player" ? "overflow-hidden" : "overflow-y-auto"}`}>
       <PlaybackVoiceController enabled />
       <PlaybackBeepController />
       <header

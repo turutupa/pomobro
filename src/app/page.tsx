@@ -72,7 +72,7 @@ function AppContent() {
         </div>
         <SettingsDropdown />
       </header>
-      <main className="relative mx-auto w-full max-w-5xl flex-1 px-4 pb-8 md:pb-12">
+      <main className="relative mx-auto w-full max-w-5xl flex-1 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12">
         <WorkoutListScreen />
       </main>
     </div>
