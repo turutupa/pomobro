@@ -134,7 +134,7 @@ function WorkoutEditorContent() {
   }, [isMobile]);
 
   return (
-    <div ref={scrollRef} className="flex h-screen w-full flex-col overflow-y-auto text-zinc-900 dark:text-zinc-100 md:overflow-hidden">
+    <div ref={scrollRef} className={`flex h-screen w-full flex-col text-zinc-900 dark:text-zinc-100 md:overflow-hidden ${isMobile && view === "player" ? "overflow-hidden" : "overflow-y-auto"}`}>
       <PlaybackVoiceController enabled />
       <PlaybackBeepController />
       <header
@@ -190,7 +190,7 @@ function WorkoutEditorContent() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-2 pb-48 md:min-h-0 md:flex-1 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
+      <main className={`mx-auto flex w-full max-w-7xl flex-col gap-4 px-2 md:min-h-0 md:flex-1 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px] ${isMobile && view === "cards" ? "pb-48" : "min-h-0 flex-1 pb-4"}`}>
         <section
           className={`scrollbar-thin min-h-0 w-full px-1 pt-2 md:overflow-y-auto md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
         >
