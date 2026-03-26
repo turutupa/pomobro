@@ -28,7 +28,7 @@ import {
 import { WorkoutProvider, useWorkout } from "@/state/workout-context";
 import { useWorkouts } from "@/state/workouts-context";
 import { TutorialProvider } from "@/state/tutorial-context";
-import { useEffect, useRef, useLayoutEffect } from "react";
+import { useCallback, useEffect, useRef, useState, useLayoutEffect } from "react";
 import { IntervalEditorList } from "./IntervalCards";
 import { PlayerPanel } from "./PlayerPanel";
 import { SettingsDropdown } from "./SettingsDropdown";
@@ -112,11 +112,41 @@ function WorkoutEditorContent() {
           : ((currentInterval as RestInterval).color ?? DEFAULT_REST_COLOR)
         : undefined;
 
+  // Track whether the user has scrolled on mobile for compact header
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !isMobile) return;
+    const onScroll = () => setScrolled(el.scrollTop > 8);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [isMobile]);
+
   return (
-    <div className="flex h-screen w-full flex-col overflow-y-auto text-zinc-900 dark:text-zinc-100 md:overflow-hidden">
+    <div ref={scrollRef} className="flex h-screen w-full flex-col overflow-y-auto text-zinc-900 dark:text-zinc-100 md:overflow-hidden">
       <PlaybackVoiceController enabled />
       <PlaybackBeepController />
-      <header className="sticky top-0 z-30 flex w-full max-w-7xl shrink-0 flex-col gap-1 px-4 py-3 backdrop-blur-xl bg-white/70 dark:bg-zinc-950/70 shadow-[0_1px_3px_rgba(0,0,0,0.08)] md:relative md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:shadow-none md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]">
+      <header
+        className={`sticky top-0 z-30 flex w-full max-w-7xl shrink-0 flex-col px-4 transition-all duration-200 md:relative md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:shadow-none md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))] ${
+          scrolled
+            ? "gap-0 py-1.5"
+            : "gap-1 py-3"
+        }`}
+      >
+        {/* Gradient scrim: fades from solid to transparent (mobile only) */}
+        {isMobile && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10"
+            style={{
+              height: "150%",
+              background: scrolled
+                ? "linear-gradient(to bottom, var(--scrim-color) 0%, var(--scrim-color) 50%, transparent 100%)"
+                : "linear-gradient(to bottom, var(--scrim-color) 0%, transparent 100%)",
+            }}
+          />
+        )}
         <div className="flex h-9 min-h-9 min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <BackButton />
@@ -143,7 +173,8 @@ function WorkoutEditorContent() {
             <SettingsDropdown workout={workoutState.workout} />
           </div>
         </div>
-        <WorkoutHeaderTotal />
+        {/* Hide total on mobile when scrolled for compact header */}
+        {!(isMobile && scrolled) && <WorkoutHeaderTotal />}
       </header>
 
       <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-2 pb-0 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
