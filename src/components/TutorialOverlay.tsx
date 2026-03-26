@@ -118,12 +118,29 @@ function Popover({
     el.style.position = "relative";
     el.style.zIndex = "1001";
     el.style.borderRadius = "12px";
+
+    // If the target is inside a fixed/absolute positioned ancestor,
+    // elevate that ancestor too so the z-index actually escapes to the root stacking context.
+    const saved: { el: HTMLElement; zIndex: string }[] = [];
+    let parent = el.parentElement;
+    while (parent && parent !== document.body) {
+      const pos = getComputedStyle(parent).position;
+      if (pos === "fixed" || pos === "absolute") {
+        saved.push({ el: parent, zIndex: parent.style.zIndex });
+        parent.style.zIndex = "1001";
+      }
+      parent = parent.parentElement;
+    }
+
     // Scroll target into view
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     return () => {
       el.style.position = prev.position;
       el.style.zIndex = prev.zIndex;
       el.style.borderRadius = prev.borderRadius;
+      for (const s of saved) {
+        s.el.style.zIndex = s.zIndex;
+      }
     };
   }, [step.target]);
 

@@ -113,10 +113,10 @@ function WorkoutEditorContent() {
         : undefined;
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden text-zinc-900 dark:text-zinc-100">
+    <div className="flex h-screen w-full flex-col overflow-y-auto text-zinc-900 dark:text-zinc-100 md:overflow-hidden">
       <PlaybackVoiceController enabled />
       <PlaybackBeepController />
-      <header className="flex shrink-0 w-full max-w-7xl flex-col gap-1 px-4 py-4 md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]">
+      <header className="sticky top-0 z-30 flex w-full max-w-7xl shrink-0 flex-col gap-1 px-4 py-3 backdrop-blur-xl bg-white/70 dark:bg-zinc-950/70 shadow-[0_1px_3px_rgba(0,0,0,0.08)] md:relative md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:shadow-none md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]">
         <div className="flex h-9 min-h-9 min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <BackButton />
@@ -146,9 +146,9 @@ function WorkoutEditorContent() {
         <WorkoutHeaderTotal />
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 overflow-hidden px-2 pb-0 md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
+      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-2 pb-0 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
         <section
-          className={`scrollbar-thin min-h-0 w-full overflow-y-auto py-2 px-1 pb-40 md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
+          className={`min-h-0 w-full py-2 px-1 pb-40 md:scrollbar-thin md:overflow-y-auto md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
         >
           <IntervalEditorList />
         </section>
