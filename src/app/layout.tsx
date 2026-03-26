@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Plus_Jakarta_Sans, Syne } from "next/font/google";
+import { Geist, Plus_Jakarta_Sans, Syne } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SettingsProvider } from "@/state/settings-context";
@@ -9,23 +9,21 @@ import { PwaRegistration } from "@/components/PwaRegistration";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["600", "700", "800"],
+  display: "swap",
 });
 
 const syne = Syne({
   variable: "--font-brand",
   subsets: ["latin"],
   weight: ["700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -69,7 +67,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${plusJakarta.variable} ${syne.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${plusJakarta.variable} ${syne.variable} font-sans antialiased`}
       >
         <ThemeProvider>
           <SettingsProvider>

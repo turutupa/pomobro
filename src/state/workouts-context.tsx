@@ -4,7 +4,6 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useLayoutEffect,
   useState,
 } from "react";
 import type { Workout } from "@/domain/workout";
@@ -128,7 +127,7 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoaded, setIsLoaded] = React.useState(false);
 
-  useLayoutEffect(() => {
+  React.useEffect(() => {
     dispatch({ type: "load" });
     setIsLoaded(true);
   }, []);
@@ -227,9 +226,11 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
   if (!isLoaded) {
     return (
       <div
-        className="app-loading-screen min-h-screen w-full"
+        className="app-loading-screen flex min-h-screen w-full items-center justify-center"
         aria-hidden="true"
-      />
+      >
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-300 border-t-teal-500 dark:border-zinc-600 dark:border-t-teal-400" />
+      </div>
     );
   }
 

@@ -63,7 +63,6 @@
   --color-primary-900: var(--primary-900);
   --color-primary-950: var(--primary-950);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   --font-family-display: var(--font-display);
   --font-family-brand: var(--font-brand);
 }
