@@ -23,7 +23,7 @@
   --primary-800: #005c3d;
   --primary-900: #003d28;
   --primary-950: #0a1914;
-  --scrim-color: rgba(234, 230, 230, 0.92);
+  --scrim-color: rgba(234, 230, 230, 0.85);
 }
 
 .dark {
@@ -46,7 +46,7 @@
   --primary-800: #005c3d;
   --primary-900: #003d28;
   --primary-950: #0a1914;
-  --scrim-color: rgba(9, 9, 11, 0.92);
+  --scrim-color: rgba(9, 9, 11, 0.85);
 }
 
 @theme inline {

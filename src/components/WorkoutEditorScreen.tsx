@@ -140,15 +140,13 @@ function WorkoutEditorContent() {
       <header
         className="sticky top-0 z-30 flex w-full max-w-7xl shrink-0 flex-col gap-1 px-4 py-3 md:relative md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:shadow-none md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]"
       >
-        {/* Gradient scrim: fades from solid to transparent (mobile only) */}
+        {/* Gradient scrim: smooth fade from background to transparent (mobile only) */}
         {isMobile && (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 -z-10"
             style={{
               height: "200%",
-              background: scrolled
-                ? "linear-gradient(to bottom, var(--scrim-color) 0%, var(--scrim-color) 50%, transparent 100%)"
-                : "linear-gradient(to bottom, var(--scrim-color) 0%, transparent 100%)",
+              background: "linear-gradient(to bottom, var(--scrim-color) 0%, transparent 100%)",
             }}
           />
         )}
@@ -192,7 +190,7 @@ function WorkoutEditorContent() {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-2 pb-48 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-2 pb-48 md:min-h-0 md:flex-1 md:overflow-hidden md:flex-row md:gap-8 md:px-4 md:pb-8 2xl:max-w-[1600px]">
         <section
           className={`scrollbar-thin min-h-0 w-full px-1 pt-2 md:overflow-y-auto md:pb-2 md:min-w-0 md:w-[42%] md:flex-none md:rounded-2xl md:bg-zinc-100 md:p-5 md:shadow-sm dark:md:bg-zinc-900/95 ${isMobile && view === "player" ? "hidden" : ""} md:!block`}
         >
