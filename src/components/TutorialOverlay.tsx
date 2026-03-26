@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTutorial, type TutorialStep } from "@/state/tutorial-context";
 import { useWorkout } from "@/state/workout-context";
+import { usePhonePlaybackView, useIsMobile } from "@/state/phone-playback-view-context";
 
 function Popover({
   step,
@@ -189,11 +190,36 @@ export function TutorialOverlay() {
   const { isActive, currentStep, steps, nextStep, skipTutorial } =
     useTutorial();
   const { state: workoutState, addWorkAfter } = useWorkout();
+  const { view, setView } = usePhonePlaybackView();
+  const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
+  const savedViewRef = useRef<"cards" | "player" | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Auto-flip phone view to "player" on Timer/Start steps (indices 3, 4)
+  useEffect(() => {
+    if (!isMobile || !isActive) return;
+    const needsPlayerView = currentStep === 3 || currentStep === 4;
+    if (needsPlayerView && view !== "player") {
+      savedViewRef.current = view;
+      setView("player");
+    } else if (!needsPlayerView && savedViewRef.current !== null && view === "player") {
+      setView(savedViewRef.current);
+      savedViewRef.current = null;
+    }
+  }, [isMobile, isActive, currentStep, view, setView]);
+
+  // Restore view when tutorial ends or is skipped
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!isActive && savedViewRef.current !== null) {
+      setView(savedViewRef.current);
+      savedViewRef.current = null;
+    }
+  }, [isMobile, isActive, setView]);
 
   if (!mounted || !isActive || currentStep < 0 || currentStep >= steps.length)
     return null;
