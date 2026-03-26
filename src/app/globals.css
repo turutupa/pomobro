@@ -71,6 +71,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Use dynamic viewport height so mobile browsers account for
+     the collapsible URL bar instead of the fixed 100vh value. */
+  --app-h: 100dvh;
 }
 
 body {

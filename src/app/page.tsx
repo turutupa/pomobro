@@ -41,7 +41,7 @@ function AppContent() {
   }, [importWorkout, importWorkouts, router]);
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-hidden text-zinc-900 dark:text-zinc-100">
+    <div className="relative flex min-h-[100dvh] w-full flex-col overflow-hidden text-zinc-900 dark:text-zinc-100">
       {/* Subtle gradient orb */}
       <div className="pointer-events-none absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary-500/20 blur-3xl dark:bg-primary-500/10" />
       <div className="pointer-events-none absolute top-1/2 -left-20 h-60 w-60 rounded-full bg-sky-400/10 blur-3xl dark:bg-sky-500/5" />
