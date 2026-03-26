@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SettingsProvider } from "@/state/settings-context";
 import { WorkoutsProvider } from "@/state/workouts-context";
 import { PwaRegistration } from "@/components/PwaRegistration";
+import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,6 +73,7 @@ export default function RootLayout({
         <ThemeProvider>
           <SettingsProvider>
             <WorkoutsProvider>
+              <Analytics />
               <PwaRegistration />
               {children}
             </WorkoutsProvider>
