@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "How to",
   description:
-    "How to use Pomobro — voice options, beeps, circuits, and loopers.",
+    "How to use PomoBro — voice options, beeps, circuits, and loopers.",
 };
 
 export default function HowToPage() {
@@ -17,7 +17,7 @@ export default function HowToPage() {
       </Link>
 
       <h1 className="font-display mb-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-        How to use Pomobro
+        How to use PomoBro
       </h1>
       <p className="mb-10 text-zinc-500 dark:text-zinc-400">
         Voice-guided interval timer for workouts and focus sessions.

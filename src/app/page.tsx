@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { WorkoutListScreen } from "@/components/WorkoutListScreen";
 import { SettingsDropdown } from "@/components/SettingsDropdown";
-import { useWorkouts } from "@/state/workouts-context";
+import { WorkoutListScreen } from "@/components/WorkoutListScreen";
 import { decodeWorkoutOrBundle } from "@/domain/share";
+import { useWorkouts } from "@/state/workouts-context";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 function AppContent() {
   const router = useRouter();

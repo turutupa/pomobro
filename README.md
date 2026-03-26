@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="public/logo.svg" alt="Pomobro" width="96">
+  <img src="public/logo.svg" alt="PomoBro" width="96">
 </p>
 
-# Pomobro
+# PomoBro
 
 **Interval timer that talks.** Build HIIT, strength, and focus routines with hands-free voice guidance. No sign-in. No fluff.
 
-![Pomobro](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
+![PomoBro](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
 ![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)
 
 ## What it does

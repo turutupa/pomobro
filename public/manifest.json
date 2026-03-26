@@ -1,6 +1,6 @@
 {
-  "name": "Pomobro",
-  "short_name": "Pomobro",
+  "name": "PomoBro",
+  "short_name": "PomoBro",
   "description": "Voice-guided interval timer for workouts and focus sessions",
   "start_url": "/",
   "display": "fullscreen",
@@ -12,13 +12,25 @@
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

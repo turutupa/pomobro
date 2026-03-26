@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
-import { Geist, Plus_Jakarta_Sans, Syne } from "next/font/google";
-import "./globals.css";
+import { PwaRegistration } from "@/components/PwaRegistration";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SettingsProvider } from "@/state/settings-context";
 import { WorkoutsProvider } from "@/state/workouts-context";
-import { PwaRegistration } from "@/components/PwaRegistration";
 import { Analytics } from "@vercel/analytics/react";
+import type { Metadata } from "next";
+import { Geist, Plus_Jakarta_Sans, Syne } from "next/font/google";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,17 +29,17 @@ const syne = Syne({
 
 export const metadata: Metadata = {
   title: {
-    default: "Pomobro",
-    template: "%s | Pomobro",
+    default: "PomoBro",
+    template: "%s | PomoBro",
   },
   description:
-    "Pomobro is a mobile-first, voice-guided interval timer for workouts and focus sessions, with shareable card-based routines.",
+    "PomoBro is a mobile-first, voice-guided interval timer for workouts and focus sessions, with shareable card-based routines.",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
-    title: "Pomobro",
+    title: "PomoBro",
     description:
       "Build and run HIIT, strength, and focus intervals with hands-free voice guidance and shareable workout cards.",
     type: "website",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pomobro",
+    title: "PomoBro",
     description:
       "Mobile-first interval timer with spoken cues and shareable workouts.",
   },

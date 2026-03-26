@@ -8,11 +8,13 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const svgPath = join(root, "src/app/icon.svg");
+const maskableSvgPath = join(root, "src/app/icon-maskable.svg");
 const outDir = join(root, "public/icons");
 
 if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
 const svg = readFileSync(svgPath);
+const maskableSvg = readFileSync(maskableSvgPath);
 
 for (const size of [192, 512]) {
   await sharp(Buffer.from(svg))
@@ -20,4 +22,10 @@ for (const size of [192, 512]) {
     .png()
     .toFile(join(outDir, `icon-${size}.png`));
   console.log(`Generated public/icons/icon-${size}.png`);
+
+  await sharp(Buffer.from(maskableSvg))
+    .resize(size, size)
+    .png()
+    .toFile(join(outDir, `icon-maskable-${size}.png`));
+  console.log(`Generated public/icons/icon-maskable-${size}.png`);
 }
