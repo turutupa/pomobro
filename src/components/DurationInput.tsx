@@ -136,10 +136,7 @@ export function DurationInput({
         onKeyDown={(e) => e.key === "Enter" && commit(local)}
         onClick={(e) => e.stopPropagation()}
         onFocus={(e) => {
-          e.target.setSelectionRange(
-            e.target.value.length,
-            e.target.value.length,
-          );
+          e.target.select();
         }}
       />
       <button

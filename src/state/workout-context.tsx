@@ -13,6 +13,7 @@ import {
   deleteInterval as deleteIntervalDomain,
   moveInterval as moveIntervalDomain,
   updateLooperBlock as updateLooperBlockDomain,
+  updateLooperBlockBelow as updateLooperBlockBelowDomain,
   normalizeWorkout,
 } from "@/domain/workout";
 
@@ -38,6 +39,11 @@ type Action =
       type: "updateLooperBlock";
       looperId: string;
       wrapIntervalIds: string[];
+    }
+  | {
+      type: "updateLooperBlockBelow";
+      looperId: string;
+      wrapBelowIntervalIds: string[];
     }
   | { type: "updateMeta"; name?: string; description?: string; sets?: number };
 
@@ -126,6 +132,14 @@ function reducer(state: WorkoutState, action: Action): WorkoutState {
       );
       return { ...state, workout };
     }
+    case "updateLooperBlockBelow": {
+      const workout = updateLooperBlockBelowDomain(
+        state.workout,
+        action.looperId,
+        action.wrapBelowIntervalIds,
+      );
+      return { ...state, workout };
+    }
     case "updateMeta": {
       const workout: Workout = {
         ...state.workout,
@@ -195,6 +209,15 @@ export function useWorkout() {
       dispatch({ type: "updateInterval", id, patch }),
     updateLooperBlock: (looperId: string, wrapIntervalIds: string[]) =>
       dispatch({ type: "updateLooperBlock", looperId, wrapIntervalIds }),
+    updateLooperBlockBelow: (
+      looperId: string,
+      wrapBelowIntervalIds: string[],
+    ) =>
+      dispatch({
+        type: "updateLooperBlockBelow",
+        looperId,
+        wrapBelowIntervalIds,
+      }),
     updateMeta: (name?: string, description?: string, sets?: number) =>
       dispatch({ type: "updateMeta", name, description, sets }),
   };

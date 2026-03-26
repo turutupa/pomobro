@@ -1,6 +1,11 @@
 "use client";
 
 import { Workout, expandIntervals } from "@/domain/workout";
+import type {
+  WorkInterval,
+  RestInterval,
+  PrepInterval,
+} from "@/domain/workout";
 import React, {
   createContext,
   useContext,
@@ -14,6 +19,18 @@ function getPlaybackIntervals(workout: Workout) {
   return expandIntervals(workout.intervals);
 }
 
+/** Check if an interval should get a 1-second voice announcement delay before its timer starts. */
+function shouldHaveVoiceDelay(
+  interval: WorkInterval | RestInterval | PrepInterval,
+): boolean {
+  // Prep intervals have their own voice flow, no delay needed.
+  if (interval.type === "prep") return false;
+  // Work and rest intervals get a delay when voice is not muted.
+  if (interval.type === "work") return !interval.voice?.mute;
+  // Rest intervals
+  return !interval.voice?.mute;
+}
+
 interface PlayerState {
   isRunning: boolean;
   /** True when paused (timer stopped but stay in playback UI). */
@@ -23,6 +40,10 @@ interface PlayerState {
   currentSetIndex: number;
   secondsRemainingInInterval: number;
   startedAt: number | null;
+  /** When true, the player is in a voice announcement delay before the interval timer starts. */
+  isInVoiceDelay: boolean;
+  /** Number of 1-second ticks remaining in the voice delay (default 1 = 1 second). */
+  voiceDelayTicksRemaining?: number;
 }
 
 type Action =
@@ -54,6 +75,7 @@ function initialState(workout: Workout): PlayerState {
     currentSetIndex: 0,
     secondsRemainingInInterval: first?.durationSeconds ?? 0,
     startedAt: null,
+    isInVoiceDelay: false,
   };
 }
 
@@ -83,6 +105,9 @@ function reducer(state: PlayerState, action: Action): PlayerState {
       const secondsRemaining = state.isPaused
         ? state.secondsRemainingInInterval
         : target.durationSeconds;
+      // Add voice announcement delay when starting (not resuming from pause)
+      const addVoiceDelay =
+        !state.isPaused && shouldHaveVoiceDelay(target);
       return {
         ...state,
         currentIndex: safeIdx,
@@ -91,6 +116,8 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         secondsRemainingInInterval: secondsRemaining,
         isRunning: true,
         isPaused: false,
+        isInVoiceDelay: addVoiceDelay,
+        voiceDelayTicksRemaining: addVoiceDelay ? 1 : undefined,
         startedAt: Date.now(),
       };
     }
@@ -99,6 +126,8 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         ...state,
         isRunning: false,
         isPaused: true,
+        isInVoiceDelay: false,
+        voiceDelayTicksRemaining: undefined,
         startedAt: null,
       };
     case "jumpTo": {
@@ -114,10 +143,20 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         startedAt: null,
         isRunning: false,
         isPaused: false,
+        isInVoiceDelay: false,
+        voiceDelayTicksRemaining: undefined,
       };
     }
     case "tick": {
       if (!state.isRunning) return state;
+      // Voice announcement delay: hold for 1 tick (1 second) before starting the countdown
+      if (state.isInVoiceDelay) {
+        const nextDelay = (state.voiceDelayTicksRemaining ?? 1) - 1;
+        if (nextDelay > 0) {
+          return { ...state, voiceDelayTicksRemaining: nextDelay };
+        }
+        return { ...state, isInVoiceDelay: false, voiceDelayTicksRemaining: undefined };
+      }
       const remaining = state.secondsRemainingInInterval - 1;
       if (remaining > 0) {
         return {
@@ -135,6 +174,8 @@ function reducer(state: PlayerState, action: Action): PlayerState {
           ...state,
           currentIndex: nextIndex,
           secondsRemainingInInterval: next.durationSeconds,
+          isInVoiceDelay: shouldHaveVoiceDelay(next),
+          voiceDelayTicksRemaining: shouldHaveVoiceDelay(next) ? 1 : undefined,
         };
       }
       // finished one set - repeat or complete
@@ -146,6 +187,8 @@ function reducer(state: PlayerState, action: Action): PlayerState {
           currentIndex: 0,
           currentSetIndex: nextSetIndex,
           secondsRemainingInInterval: first.durationSeconds,
+          isInVoiceDelay: shouldHaveVoiceDelay(first),
+          voiceDelayTicksRemaining: shouldHaveVoiceDelay(first) ? 1 : undefined,
         };
       }
       // workout complete (all sets done)
@@ -153,6 +196,8 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         ...state,
         isRunning: false,
         isPaused: false,
+        isInVoiceDelay: false,
+        voiceDelayTicksRemaining: undefined,
         startedAt: null,
       };
     }

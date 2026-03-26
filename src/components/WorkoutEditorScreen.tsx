@@ -27,6 +27,7 @@ import {
 } from "@/state/preview-mode-context";
 import { WorkoutProvider, useWorkout } from "@/state/workout-context";
 import { useWorkouts } from "@/state/workouts-context";
+import { TutorialProvider } from "@/state/tutorial-context";
 import { useEffect, useRef, useLayoutEffect } from "react";
 import { IntervalEditorList } from "./IntervalCards";
 import { PlayerPanel } from "./PlayerPanel";
@@ -34,6 +35,7 @@ import { SettingsDropdown } from "./SettingsDropdown";
 import { WorkoutHeader, WorkoutHeaderTotal } from "./WorkoutHeader";
 import { PlaybackVoiceController } from "@/voice/PlaybackVoiceController";
 import { PlaybackBeepController } from "@/voice/PlaybackBeepController";
+import { TutorialOverlay } from "./TutorialOverlay";
 import { resumeAudioContext } from "@/voice/BeepEngine";
 
 function WorkoutEditorSync() {
@@ -62,8 +64,11 @@ export function WorkoutEditorScreen() {
       <WorkoutProvider key={currentWorkout.id} initialWorkout={currentWorkout}>
         <PlayerProvider workout={currentWorkout}>
           <PhonePlaybackViewProvider>
-            <WorkoutEditorSync />
-            <WorkoutEditorContent />
+            <TutorialProvider>
+              <WorkoutEditorSync />
+              <WorkoutEditorContent />
+              <TutorialOverlay />
+            </TutorialProvider>
           </PhonePlaybackViewProvider>
         </PlayerProvider>
       </WorkoutProvider>
@@ -149,6 +154,7 @@ function WorkoutEditorContent() {
         </section>
 
         <section
+          data-tutorial="timer-panel"
           className={`scrollbar-thin flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-2xl p-5 text-white shadow-lg dark:text-zinc-100 md:min-h-full md:overflow-hidden md:p-6 ${isMobile && view === "cards" ? "hidden" : "block"} ${isMobile && view === "player" ? "pb-24" : ""} md:block ${!timerViewBgColor ? "bg-primary-600 dark:bg-zinc-800" : ""}`}
           style={
             timerViewBgColor ? { backgroundColor: timerViewBgColor } : undefined
@@ -238,6 +244,7 @@ function MobilePlayerBar() {
         </div>
         <button
           type="button"
+          data-tutorial="play-button"
           onClick={
             player.isRunning
               ? pause

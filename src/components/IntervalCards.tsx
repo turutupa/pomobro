@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useWorkout } from "@/state/workout-context";
 import { usePlayer } from "@/state/player-context";
 import { usePreviewMode } from "@/state/preview-mode-context";
+import { useTutorial } from "@/state/tutorial-context";
 import {
   Interval,
   WorkInterval,
@@ -17,6 +18,7 @@ import {
   getLooperForInterval,
   getLooperIfTopOfBlock,
   getLooperExtendableIds,
+  getLooperBelowExtendableIds,
   getLooperBlock,
   type BeepSoundType,
 } from "@/domain/workout";
@@ -1812,6 +1814,14 @@ function LooperBlockHandle({
   const [isDragging, setIsDragging] = useState(false);
   const handleRef = useRef<HTMLDivElement>(null);
 
+  // Keep stable refs so the effect doesn't re-run on every state change
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  const currentBlockRef = useRef(currentBlock);
+  currentBlockRef.current = currentBlock;
+  const extendableIdsRef = useRef(extendableIds);
+  extendableIdsRef.current = extendableIds;
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -1819,11 +1829,12 @@ function LooperBlockHandle({
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const cardEl = el?.closest("[data-interval-id]");
       const id = cardEl?.getAttribute("data-interval-id");
-      if (id && extendableIds.includes(id)) {
-        const idx = extendableIds.indexOf(id);
-        const newBlock = extendableIds.slice(idx);
-        if (JSON.stringify(newBlock) !== JSON.stringify(currentBlock)) {
-          onUpdate(newBlock);
+      const ids = extendableIdsRef.current;
+      if (id && ids.includes(id)) {
+        const idx = ids.indexOf(id);
+        const newBlock = ids.slice(idx);
+        if (JSON.stringify(newBlock) !== JSON.stringify(currentBlockRef.current)) {
+          onUpdateRef.current(newBlock);
         }
       }
     };
@@ -1842,7 +1853,7 @@ function LooperBlockHandle({
       document.body.style.userSelect = "";
       document.body.style.touchAction = "";
     };
-  }, [isDragging, extendableIds, currentBlock, onUpdate]);
+  }, [isDragging]); // Only re-run when drag starts/stops
 
   return (
     <div
@@ -1884,6 +1895,135 @@ function LooperBlockHandle({
   );
 }
 
+function LooperBlockBottomHandle({
+  looper,
+  extendableBelowIds,
+  currentBelowBlock,
+  onUpdate,
+  looperColor,
+}: {
+  looper: LooperInterval;
+  extendableBelowIds: string[];
+  currentBelowBlock: string[];
+  onUpdate: (wrapBelowIntervalIds: string[]) => void;
+  looperColor: string;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const handleRef = useRef<HTMLDivElement>(null);
+  // Snapshot card positions at drag start so layout shifts don't cause flickering
+  const cardRectsRef = useRef<{ id: string; midY: number }[]>([]);
+  const handleYRef = useRef(0);
+
+  // Keep stable refs so the effect doesn't re-run (and re-snapshot) on every state change
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  const currentBelowBlockRef = useRef(currentBelowBlock);
+  currentBelowBlockRef.current = currentBelowBlock;
+  const extendableBelowIdsRef = useRef(extendableBelowIds);
+  extendableBelowIdsRef.current = extendableBelowIds;
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    // Snapshot the vertical midpoints of all extendable-below cards ONCE at drag start
+    const ids = extendableBelowIdsRef.current;
+    const rects: { id: string; midY: number }[] = [];
+    for (const id of ids) {
+      const el = document.querySelector(`[data-interval-id="${id}"]`);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        rects.push({ id, midY: r.top + r.height / 2 });
+      }
+    }
+    cardRectsRef.current = rects;
+    if (handleRef.current) {
+      handleYRef.current = handleRef.current.getBoundingClientRect().bottom;
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      const y = e.clientY;
+      // If pointer is above the handle origin, shrink to empty
+      if (y < handleYRef.current - 10) {
+        if (currentBelowBlockRef.current.length > 0) {
+          onUpdateRef.current([]);
+        }
+        return;
+      }
+      // Find the furthest card whose midpoint the pointer has passed
+      let count = 0;
+      for (const rect of cardRectsRef.current) {
+        if (y >= rect.midY - 20) {
+          count++;
+        } else {
+          break;
+        }
+      }
+      const newBlock = extendableBelowIdsRef.current.slice(0, count);
+      if (JSON.stringify(newBlock) !== JSON.stringify(currentBelowBlockRef.current)) {
+        onUpdateRef.current(newBlock);
+      }
+    };
+
+    const onPointerUp = () => setIsDragging(false);
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.body.style.touchAction = "";
+    };
+  }, [isDragging]); // Only re-run when drag starts/stops — snapshot stays stable
+
+  if (extendableBelowIds.length === 0 && currentBelowBlock.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={handleRef}
+      role="button"
+      tabIndex={0}
+      data-interactive
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        setIsDragging(true);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+        }
+      }}
+      style={{
+        touchAction: "none",
+        backgroundColor: looperColor,
+      }}
+      className={`flex min-h-[44px] cursor-ns-resize items-center justify-center py-3 transition-opacity hover:opacity-100 md:min-h-0 md:py-1.5 ${
+        isDragging ? "opacity-100" : "opacity-80"
+      }`}
+      aria-label="Drag to extend or shrink repeat block downward"
+      title="Drag down to include more intervals, drag up to exclude"
+    >
+      <svg
+        className="h-4 w-4 text-white/90"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <circle cx="12" cy="6" r="1.5" />
+        <circle cx="12" cy="12" r="1.5" />
+        <circle cx="12" cy="18" r="1.5" />
+      </svg>
+    </div>
+  );
+}
+
 function Connector({
   aboveId,
   belowId,
@@ -1906,7 +2046,7 @@ function Connector({
   if (isInPlaybackMode || previewMode) return null;
   return (
     <div className="flex justify-center py-3">
-      <div className="flex gap-2">
+      <div className="flex gap-2" data-tutorial="add-buttons">
         {showGetReadyButton && (
           <AddButtonWithPopover
             onClick={() => addPrepAfter(null)}
@@ -1937,14 +2077,13 @@ function Connector({
               className="h-5 w-5"
               fill="none"
               stroke="currentColor"
+              strokeWidth={2}
               viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
-              />
+              {/* Dumbbell icon */}
+              <line x1="4" y1="12" x2="20" y2="12" strokeLinecap="round" />
+              <rect x="1" y="9" width="4" height="6" rx="1" strokeLinejoin="round" />
+              <rect x="19" y="9" width="4" height="6" rx="1" strokeLinejoin="round" />
             </svg>
           }
           label="Workout"
@@ -1961,17 +2100,18 @@ function Connector({
               className="h-5 w-5"
               fill="none"
               stroke="currentColor"
+              strokeWidth={2}
               viewBox="0 0 24 24"
             >
+              {/* Pause / rest icon */}
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           }
-          label="Rest"
+          label="Rest / pause"
         />
         <AddButtonWithPopover
           onClick={() => addLooperAfter(aboveId ?? null)}
@@ -1981,17 +2121,33 @@ function Connector({
               className="h-5 w-5"
               fill="none"
               stroke="currentColor"
+              strokeWidth={2}
               viewBox="0 0 24 24"
             >
+              {/* Repeat / loop icon — two curved arrows */}
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                d="M17 1l4 4-4 4"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 11V9a4 4 0 014-4h14"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7 23l-4-4 4-4"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 13v2a4 4 0 01-4 4H3"
               />
             </svg>
           }
-          label="Looper"
+          label="Repeat block"
         />
       </div>
     </div>
@@ -2006,9 +2162,11 @@ export function IntervalEditorList() {
     addWorkAfter,
     updateInterval,
     updateLooperBlock,
+    updateLooperBlockBelow,
   } = useWorkout();
   const { state: player, play } = usePlayer();
   const { previewMode } = usePreviewMode();
+  const tutorialCtx = useTutorial();
   const isInPlaybackMode = player.isRunning || player.isPaused;
   const showCompactView = isInPlaybackMode || previewMode;
   const { intervals } = state.workout;
@@ -2051,10 +2209,15 @@ export function IntervalEditorList() {
         </p>
         <button
           type="button"
-          onClick={() => addWorkAfter(null)}
+          data-tutorial="add-first-interval"
+          onClick={() => {
+            addWorkAfter(null);
+            // Auto-advance tutorial if on step 1
+            if (tutorialCtx.currentStep === 0) tutorialCtx.nextStep();
+          }}
           className="cursor-pointer rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-primary-500 dark:bg-primary-500 dark:text-white dark:hover:bg-primary-400"
         >
-          + Add work interval
+          + Add workout interval
         </button>
       </div>
     );
@@ -2076,22 +2239,52 @@ export function IntervalEditorList() {
   };
 
   const renderGroups: Array<
-    | { type: "looper"; start: number; end: number; looper: LooperInterval }
+    | {
+        type: "looper";
+        start: number;
+        looperIndex: number;
+        end: number;
+        looper: LooperInterval;
+      }
     | { type: "standalone"; index: number }
   > = [];
+  // Collect all below-wrapped IDs for skip detection
+  const allBelowWrappedIds = new Set<string>();
+  for (const interval of intervals) {
+    if (interval.type === "looper" && interval.wrapBelowIntervalIds) {
+      for (const id of interval.wrapBelowIntervalIds)
+        allBelowWrappedIds.add(id);
+    }
+  }
   for (let i = 0; i < intervals.length; i++) {
     const interval = intervals[i];
     // If a looper's block is empty (e.g. the only included card was deleted),
     // we still want to render the drag handle so the user can re-expand it.
     if (interval.type === "looper") {
       const block = getLooperBlock(intervals, interval);
+      const belowSet = new Set(interval.wrapBelowIntervalIds ?? []);
       if (block.length === 0) {
+        // Looper with no above-wrapped items — check for below-wrapped items
+        let belowEnd = i;
+        if (belowSet.size > 0) {
+          for (let j = i + 1; j < intervals.length; j++) {
+            if (intervals[j].type === "looper") break;
+            if (belowSet.has(intervals[j].id)) belowEnd = j;
+            else if (
+              intervals[j].type === "work" ||
+              intervals[j].type === "rest"
+            )
+              break;
+          }
+        }
         renderGroups.push({
           type: "looper",
           start: i,
-          end: i,
+          looperIndex: i,
+          end: belowEnd,
           looper: interval,
         });
+        i = belowEnd;
       } else {
         renderGroups.push({ type: "standalone", index: i });
       }
@@ -2103,16 +2296,32 @@ export function IntervalEditorList() {
     ) {
       const topLooper = getLooperIfTopOfBlock(intervals, interval.id)!;
       const looperIdx = intervals.findIndex((x) => x.id === topLooper.id);
+      // Find below-wrapped items
+      const belowSet = new Set(topLooper.wrapBelowIntervalIds ?? []);
+      let belowEnd = looperIdx;
+      if (belowSet.size > 0) {
+        for (let j = looperIdx + 1; j < intervals.length; j++) {
+          if (intervals[j].type === "looper") break;
+          if (belowSet.has(intervals[j].id)) belowEnd = j;
+          else if (
+            intervals[j].type === "work" ||
+            intervals[j].type === "rest"
+          )
+            break;
+        }
+      }
       renderGroups.push({
         type: "looper",
         start: i,
-        end: looperIdx,
+        looperIndex: looperIdx,
+        end: belowEnd,
         looper: topLooper,
       });
-      i = looperIdx;
+      i = belowEnd;
     } else if (
       (interval.type === "work" || interval.type === "rest") &&
-      getLooperForInterval(intervals, interval.id)
+      (getLooperForInterval(intervals, interval.id) ||
+        allBelowWrappedIds.has(interval.id))
     ) {
       continue;
     } else {
@@ -2134,6 +2343,31 @@ export function IntervalEditorList() {
       {renderGroups.map((group) => {
         if (group.type === "looper") {
           const looperColor = getLooperColor(group.looper.id, intervals);
+          // Build ordered indices: above items, below items, then looper card
+          const belowSet = new Set(
+            group.looper.wrapBelowIntervalIds ?? [],
+          );
+          const aboveIndices: number[] = [];
+          for (
+            let k = group.start;
+            k < group.looperIndex;
+            k++
+          ) {
+            aboveIndices.push(k);
+          }
+          const belowIndices: number[] = [];
+          for (
+            let k = group.looperIndex + 1;
+            k <= group.end;
+            k++
+          ) {
+            if (belowSet.has(intervals[k].id)) belowIndices.push(k);
+          }
+          const renderItems = [
+            ...aboveIndices,
+            ...belowIndices,
+            group.looperIndex,
+          ];
           return (
             <div key={group.looper.id} className="flex flex-col gap-1">
               <div
@@ -2157,10 +2391,7 @@ export function IntervalEditorList() {
                     looperColor={looperColor}
                   />
                 )}
-                {Array.from(
-                  { length: group.end - group.start + 1 },
-                  (_, k) => group.start + k,
-                ).map((index) => {
+                {renderItems.map((index, ri) => {
                   const interval = intervals[index];
                   const isSelected = state.selectedIntervalId === interval.id;
                   const isCurrent =
@@ -2169,6 +2400,10 @@ export function IntervalEditorList() {
                       interval.type === "rest" ||
                       interval.type === "prep") &&
                     currentPlaybackInterval?.id === interval.id;
+                  const isLast = ri === renderItems.length - 1;
+                  const nextIdx = !isLast
+                    ? renderItems[ri + 1]
+                    : undefined;
 
                   return (
                     <div
@@ -2232,15 +2467,33 @@ export function IntervalEditorList() {
                           onUpdate={(p) => updateInterval(interval.id, p)}
                         />
                       )}
-                      {!showCompactView && index < group.end && (
-                        <Connector
-                          aboveId={interval.id}
-                          belowId={intervals[index + 1].id}
-                        />
-                      )}
+                      {!showCompactView &&
+                        !isLast &&
+                        nextIdx !== undefined && (
+                          <Connector
+                            aboveId={interval.id}
+                            belowId={intervals[nextIdx].id}
+                          />
+                        )}
                     </div>
                   );
                 })}
+                {!showCompactView && (
+                  <LooperBlockBottomHandle
+                    looper={group.looper}
+                    extendableBelowIds={getLooperBelowExtendableIds(
+                      intervals,
+                      group.looper.id,
+                    )}
+                    currentBelowBlock={
+                      group.looper.wrapBelowIntervalIds ?? []
+                    }
+                    onUpdate={(ids) =>
+                      updateLooperBlockBelow(group.looper.id, ids)
+                    }
+                    looperColor={looperColor}
+                  />
+                )}
               </div>
               {!showCompactView && (
                 <Connector

@@ -53,6 +53,8 @@ export interface LooperInterval {
   repeatCount: number;
   /** IDs of work/rest intervals in the block (in order). When absent, falls back to legacy: everything since previous looper. */
   wrapIntervalIds?: string[];
+  /** IDs of work/rest intervals BELOW this looper that are part of the repeat block. */
+  wrapBelowIntervalIds?: string[];
 }
 
 export interface PrepInterval extends BaseInterval {
@@ -109,7 +111,7 @@ export function createEmptyWorkout(
       announceHalfwayByDefault:
         partial?.defaults?.announceHalfwayByDefault ?? true,
       finalCountdownSeconds: partial?.defaults?.finalCountdownSeconds ?? 10,
-      voiceEnabledByDefault: partial?.defaults?.voiceEnabledByDefault ?? false,
+      voiceEnabledByDefault: partial?.defaults?.voiceEnabledByDefault ?? true,
       beepEnabledByDefault: partial?.defaults?.beepEnabledByDefault ?? true,
     },
   });
@@ -358,7 +360,66 @@ export function updateLooperBlock(
   };
 }
 
-/** Return the looper that has this work/rest interval in its block, or null. */
+/** Get work/rest IDs after this looper up to the next looper (for growing the block downward). */
+export function getLooperBelowExtendableIds(
+  intervals: Interval[],
+  looperId: string,
+): string[] {
+  const idx = intervals.findIndex((i) => i.id === looperId);
+  if (idx < 0) return [];
+  const result: string[] = [];
+  for (let i = idx + 1; i < intervals.length; i++) {
+    const x = intervals[i];
+    if (x.type === "looper") break;
+    if (x.type === "work" || x.type === "rest") {
+      result.push(x.id);
+    }
+  }
+  return result;
+}
+
+/** Update which below-intervals are wrapped by a looper. */
+export function updateLooperBlockBelow(
+  workout: Workout,
+  looperId: string,
+  wrapBelowIntervalIds: string[],
+): Workout {
+  const valid = getLooperBelowExtendableIds(workout.intervals, looperId);
+  const validSet = new Set(valid);
+  const filtered = wrapBelowIntervalIds.filter((id) => validSet.has(id));
+
+  return {
+    ...workout,
+    intervals: workout.intervals.map((interval) =>
+      interval.type === "looper" && interval.id === looperId
+        ? {
+            ...interval,
+            wrapBelowIntervalIds:
+              filtered.length > 0 ? filtered : undefined,
+          }
+        : interval,
+    ),
+  };
+}
+
+/** Get the block of below-wrapped intervals for a looper. */
+export function getLooperBlockBelow(
+  intervals: Interval[],
+  looper: LooperInterval,
+): (WorkInterval | RestInterval)[] {
+  if (
+    !looper.wrapBelowIntervalIds ||
+    looper.wrapBelowIntervalIds.length === 0
+  )
+    return [];
+  const belowSet = new Set(looper.wrapBelowIntervalIds);
+  return intervals.filter(
+    (x): x is WorkInterval | RestInterval =>
+      (x.type === "work" || x.type === "rest") && belowSet.has(x.id),
+  );
+}
+
+/** Return the looper that has this work/rest interval in its block (above or below), or null. */
 export function getLooperForInterval(
   intervals: Interval[],
   intervalId: string,
@@ -367,6 +428,7 @@ export function getLooperForInterval(
     if (item.type !== "looper") continue;
     const block = getLooperBlock(intervals, item);
     if (block.some((x) => x.id === intervalId)) return item;
+    if (item.wrapBelowIntervalIds?.includes(intervalId)) return item;
   }
   return null;
 }
@@ -436,32 +498,46 @@ export function expandIntervals(
   const result: (WorkInterval | RestInterval | PrepInterval)[] = [];
   let lastLooperIndex = -1;
 
+  // Collect all below-wrapped IDs so they can be skipped from "remaining" processing
+  const allBelowWrapped = new Set<string>();
+  for (const item of intervals) {
+    if (item.type === "looper" && item.wrapBelowIntervalIds) {
+      for (const id of item.wrapBelowIntervalIds) allBelowWrapped.add(id);
+    }
+  }
+
   for (let i = 0; i < intervals.length; i++) {
     const item = intervals[i];
     if (item.type === "looper") {
-      const block = getLooperBlock(intervals, item);
-      const blockIds = new Set(block.map((x) => x.id));
-      // Push work/rest/prep before this looper that are NOT in the block (e.g. prep)
+      const above = getLooperBlock(intervals, item);
+      const below = getLooperBlockBelow(intervals, item);
+      const fullBlock = [...above, ...below];
+      const blockIds = new Set(fullBlock.map((x) => x.id));
+      // Push work/rest/prep before this looper that are NOT in the block
       for (let j = lastLooperIndex + 1; j < i; j++) {
         const x = intervals[j];
         if (
           (x.type === "work" || x.type === "rest" || x.type === "prep") &&
-          !blockIds.has(x.id)
+          !blockIds.has(x.id) &&
+          !allBelowWrapped.has(x.id)
         ) {
           result.push(x);
         }
       }
       const n = Math.max(2, item.repeatCount);
       for (let r = 0; r < n; r++) {
-        result.push(...block);
+        result.push(...fullBlock);
       }
       lastLooperIndex = i;
     }
   }
-  // Push remaining items after the last looper
+  // Push remaining items after the last looper (skip below-wrapped ones)
   for (let j = lastLooperIndex + 1; j < intervals.length; j++) {
     const x = intervals[j];
-    if (x.type === "work" || x.type === "rest" || x.type === "prep") {
+    if (
+      (x.type === "work" || x.type === "rest" || x.type === "prep") &&
+      !allBelowWrapped.has(x.id)
+    ) {
       result.push(x);
     }
   }
@@ -494,20 +570,31 @@ export function getLooperProgressAtExpandedIndex(
   let expandedCount = 0;
   let lastLooperIndex = -1;
 
+  // Collect all below-wrapped IDs
+  const allBelowWrapped = new Set<string>();
+  for (const item of intervals) {
+    if (item.type === "looper" && item.wrapBelowIntervalIds) {
+      for (const id of item.wrapBelowIntervalIds) allBelowWrapped.add(id);
+    }
+  }
+
   for (let i = 0; i < intervals.length; i++) {
     const item = intervals[i];
     if (item.type === "looper") {
-      const block = getLooperBlock(intervals, item);
-      const blockIds = new Set(block.map((x) => x.id));
+      const above = getLooperBlock(intervals, item);
+      const below = getLooperBlockBelow(intervals, item);
+      const fullBlock = [...above, ...below];
+      const blockIds = new Set(fullBlock.map((x) => x.id));
       const n = Math.max(2, item.repeatCount);
-      const blockSize = block.length;
+      const blockSize = fullBlock.length;
 
       // Count items before this looper that are NOT in the block (mirrors expandIntervals)
       for (let j = lastLooperIndex + 1; j < i; j++) {
         const x = intervals[j];
         if (
           (x.type === "work" || x.type === "rest" || x.type === "prep") &&
-          !blockIds.has(x.id)
+          !blockIds.has(x.id) &&
+          !allBelowWrapped.has(x.id)
         ) {
           expandedCount++;
         }

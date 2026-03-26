@@ -89,6 +89,16 @@ export function PlaybackBeepController() {
       return;
     }
 
+    // Skip beeps during voice announcement delay
+    if (player.isInVoiceDelay) {
+      prevRef.current = {
+        remaining: rem,
+        index: player.currentIndex,
+        running: player.isRunning,
+      };
+      return;
+    }
+
     // Long beep when interval starts (from previous interval or at full duration)
     const fromPrevInterval = player.currentIndex > index;
     const atIntervalStart = currentTotal > 0 && rem === currentTotal;
@@ -121,6 +131,7 @@ export function PlaybackBeepController() {
     player.currentIndex,
     player.currentSetIndex,
     player.isRunning,
+    player.isInVoiceDelay,
     player.secondsRemainingInInterval,
   ]);
 

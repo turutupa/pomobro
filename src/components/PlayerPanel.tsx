@@ -322,6 +322,7 @@ function InnerPlayer({
         </button>
         <button
           type="button"
+          data-tutorial="play-button"
           onClick={
             player.isRunning
               ? pause

@@ -68,11 +68,11 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     const announceHalfway = current.voice?.announceHalfway ?? false;
     const finalCountdown = (current.voice?.finalCountdownSeconds ?? 3) > 0;
 
-    // Announce interval start when timer is at full duration (just started)
+    // Announce interval during the voice delay phase (1s before timer starts)
     if (
       !muted &&
       announceStart &&
-      player.secondsRemainingInInterval === current.durationSeconds &&
+      player.isInVoiceDelay &&
       player.isRunning
     ) {
       if (isWork(current)) {
@@ -85,24 +85,26 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
       }
     }
 
-    // Halfway announcement (work intervals only)
+    // Halfway announcement (work intervals only) — not during voice delay
     const halfwayRemaining = Math.ceil(current.durationSeconds / 2);
     if (
       !muted &&
       announceHalfway &&
       isWork(current) &&
       player.isRunning &&
+      !player.isInVoiceDelay &&
       player.secondsRemainingInInterval === halfwayRemaining &&
       current.durationSeconds > 3
     ) {
       engine.speak("Halfway!", speakOptions);
     }
 
-    // Final countdown (3, 2, 1)
+    // Final countdown (3, 2, 1) — not during voice delay
     if (
       !muted &&
       finalCountdown &&
       player.isRunning &&
+      !player.isInVoiceDelay &&
       player.secondsRemainingInInterval > 0 &&
       player.secondsRemainingInInterval <= 3
     ) {
@@ -113,6 +115,7 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     workoutState.workout.intervals,
     player.currentIndex,
     player.isRunning,
+    player.isInVoiceDelay,
     player.secondsRemainingInInterval,
   ]);
 

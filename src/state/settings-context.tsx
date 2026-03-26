@@ -20,9 +20,10 @@ function getStoredVoiceVolume(): number {
 }
 
 function getStoredVoiceEnabledByDefault(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return true;
   const v = localStorage.getItem(VOICE_ENABLED_BY_DEFAULT_KEY);
-  return v === "true";
+  // Default to true (voice ON) when no preference saved
+  return v === null ? true : v === "true";
 }
 
 function getStoredBeepEnabledByDefault(): boolean {
@@ -58,7 +59,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [beepVolume, setBeepVolumeState] = useState(1);
   const [voiceVolume, setVoiceVolumeState] = useState(1);
   const [voiceEnabledByDefault, setVoiceEnabledByDefaultState] =
-    useState(false);
+    useState(true);
   const [beepEnabledByDefault, setBeepEnabledByDefaultState] = useState(true);
 
   useEffect(() => {
