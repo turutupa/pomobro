@@ -119,7 +119,16 @@ function WorkoutEditorContent() {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !isMobile) return;
-    const onScroll = () => setScrolled(el.scrollTop > 8);
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          setScrolled(el.scrollTop > 8);
+          ticking = false;
+        });
+      }
+    };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, [isMobile]);
@@ -129,11 +138,7 @@ function WorkoutEditorContent() {
       <PlaybackVoiceController enabled />
       <PlaybackBeepController />
       <header
-        className={`sticky top-0 z-30 flex w-full max-w-7xl shrink-0 flex-col px-4 transition-all duration-200 md:relative md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:shadow-none md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))] ${
-          scrolled
-            ? "gap-0 py-1.5"
-            : "gap-1 py-3"
-        }`}
+        className="sticky top-0 z-30 flex w-full max-w-7xl shrink-0 flex-col gap-1 px-4 py-3 md:relative md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:shadow-none md:mx-auto md:py-6 2xl:max-w-[1600px] [padding-inline-end:max(1rem,env(safe-area-inset-right))]"
       >
         {/* Gradient scrim: fades from solid to transparent (mobile only) */}
         {isMobile && (
@@ -173,11 +178,15 @@ function WorkoutEditorContent() {
             <SettingsDropdown workout={workoutState.workout} />
           </div>
         </div>
-        {/* Collapse total on mobile when scrolled — pure CSS transition, no mount/unmount */}
+        {/* GPU-accelerated collapse: transform + opacity only, no layout thrash */}
         <div
-          className={`overflow-hidden transition-all duration-200 ${
-            isMobile && scrolled ? "max-h-0 opacity-0" : "max-h-8 opacity-100"
-          }`}
+          className="origin-top will-change-transform"
+          style={{
+            transform: isMobile && scrolled ? "scaleY(0)" : "scaleY(1)",
+            opacity: isMobile && scrolled ? 0 : 1,
+            height: isMobile && scrolled ? 0 : "auto",
+            transition: "transform 150ms ease-out, opacity 150ms ease-out",
+          }}
         >
           <WorkoutHeaderTotal />
         </div>
