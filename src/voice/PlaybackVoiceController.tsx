@@ -45,18 +45,19 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     const current = intervals[player.currentIndex];
     const muted = current && isMuted(current);
 
-    // Prep interval: "Get ready" at start, then 5, 4, 3, 2, 1 (buffer for speech)
+    // Prep interval: "Get ready" during voice delay, then 5, 4, 3, 2, 1 countdown
     if (!muted && player.isRunning && current && isPrep(current)) {
-      const rem = player.secondsRemainingInInterval;
-      const total = current.durationSeconds;
-      if (rem === total) {
+      if (player.isInVoiceDelay) {
         const next = intervals[player.currentIndex + 1];
         const name =
           next && isWork(next)
             ? (next as WorkInterval).title || "Work"
             : "Rest";
         engine.speak(`Get ready for ${name}`, speakOptions);
-      } else if (rem <= 5 && rem > 0) {
+        return;
+      }
+      const rem = player.secondsRemainingInInterval;
+      if (rem <= 5 && rem > 0) {
         engine.speak(String(rem), speakOptions);
       }
       return;

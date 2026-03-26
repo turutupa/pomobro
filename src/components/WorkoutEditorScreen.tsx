@@ -32,6 +32,7 @@ import { useCallback, useEffect, useRef, useState, useLayoutEffect } from "react
 import { IntervalEditorList } from "./IntervalCards";
 import { PlayerPanel } from "./PlayerPanel";
 import { SettingsDropdown } from "./SettingsDropdown";
+import { ShareButton } from "./ShareButton";
 import { WorkoutHeader, WorkoutHeaderTotal } from "./WorkoutHeader";
 import { PlaybackVoiceController } from "@/voice/PlaybackVoiceController";
 import { PlaybackBeepController } from "@/voice/PlaybackBeepController";
@@ -173,7 +174,8 @@ function WorkoutEditorContent() {
                 <FaThList className="h-5 w-5" />
               )}
             </button>
-            <SettingsDropdown workout={workoutState.workout} />
+            <ShareButton workout={workoutState.workout} />
+            <SettingsDropdown />
           </div>
         </div>
         {/* GPU-accelerated collapse: transform + opacity only, no layout thrash */}

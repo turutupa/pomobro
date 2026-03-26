@@ -19,15 +19,14 @@ function getPlaybackIntervals(workout: Workout) {
   return expandIntervals(workout.intervals);
 }
 
-/** Check if an interval should get a 1-second voice announcement delay before its timer starts. */
+/** Number of 1-second ticks to wait for voice announcement before the interval timer starts. */
+const VOICE_DELAY_TICKS = 2;
+
+/** Check if an interval should get a voice announcement delay before its timer starts. */
 function shouldHaveVoiceDelay(
   interval: WorkInterval | RestInterval | PrepInterval,
 ): boolean {
-  // Prep intervals have their own voice flow, no delay needed.
-  if (interval.type === "prep") return false;
-  // Work and rest intervals get a delay when voice is not muted.
-  if (interval.type === "work") return !interval.voice?.mute;
-  // Rest intervals
+  // All interval types get a delay when voice is not muted.
   return !interval.voice?.mute;
 }
 
@@ -42,7 +41,7 @@ interface PlayerState {
   startedAt: number | null;
   /** When true, the player is in a voice announcement delay before the interval timer starts. */
   isInVoiceDelay: boolean;
-  /** Number of 1-second ticks remaining in the voice delay (default 1 = 1 second). */
+  /** Number of 1-second ticks remaining in the voice delay. */
   voiceDelayTicksRemaining?: number;
 }
 
@@ -117,7 +116,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
         isRunning: true,
         isPaused: false,
         isInVoiceDelay: addVoiceDelay,
-        voiceDelayTicksRemaining: addVoiceDelay ? 1 : undefined,
+        voiceDelayTicksRemaining: addVoiceDelay ? VOICE_DELAY_TICKS : undefined,
         startedAt: Date.now(),
       };
     }
@@ -149,9 +148,9 @@ function reducer(state: PlayerState, action: Action): PlayerState {
     }
     case "tick": {
       if (!state.isRunning) return state;
-      // Voice announcement delay: hold for 1 tick (1 second) before starting the countdown
+      // Voice announcement delay: hold for VOICE_DELAY_TICKS before starting the countdown
       if (state.isInVoiceDelay) {
-        const nextDelay = (state.voiceDelayTicksRemaining ?? 1) - 1;
+        const nextDelay = (state.voiceDelayTicksRemaining ?? VOICE_DELAY_TICKS) - 1;
         if (nextDelay > 0) {
           return { ...state, voiceDelayTicksRemaining: nextDelay };
         }
@@ -175,7 +174,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
           currentIndex: nextIndex,
           secondsRemainingInInterval: next.durationSeconds,
           isInVoiceDelay: shouldHaveVoiceDelay(next),
-          voiceDelayTicksRemaining: shouldHaveVoiceDelay(next) ? 1 : undefined,
+          voiceDelayTicksRemaining: shouldHaveVoiceDelay(next) ? VOICE_DELAY_TICKS : undefined,
         };
       }
       // finished one set - repeat or complete
@@ -188,7 +187,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
           currentSetIndex: nextSetIndex,
           secondsRemainingInInterval: first.durationSeconds,
           isInVoiceDelay: shouldHaveVoiceDelay(first),
-          voiceDelayTicksRemaining: shouldHaveVoiceDelay(first) ? 1 : undefined,
+          voiceDelayTicksRemaining: shouldHaveVoiceDelay(first) ? VOICE_DELAY_TICKS : undefined,
         };
       }
       // workout complete (all sets done)

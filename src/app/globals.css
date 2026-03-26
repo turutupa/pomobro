@@ -156,3 +156,38 @@ html.dark .app-loading-screen {
     background: #71717a;
   }
 }
+
+/* Sleek mini scrollbar for compact scroll areas (voice picker, etc.) */
+.scrollbar-sleek {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
+}
+
+.dark .scrollbar-sleek {
+  scrollbar-color: #52525b transparent;
+}
+
+.scrollbar-sleek::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-sleek::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-sleek::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 2px;
+}
+
+.scrollbar-sleek::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+.dark .scrollbar-sleek::-webkit-scrollbar-thumb {
+  background: #52525b;
+}
+
+.dark .scrollbar-sleek::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}

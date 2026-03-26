@@ -1,66 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useTheme } from "./ThemeProvider";
 import { useSettings } from "@/state/settings-context";
 import { usePwaInstall } from "./PwaInstall";
-import { encodeWorkout } from "@/domain/share";
-import type { Workout } from "@/domain/workout";
-
-function ShareWorkoutButton({
-  workout,
-  copied,
-  onCopiedChange,
-}: {
-  workout: Workout;
-  copied: boolean;
-  onCopiedChange: (v: boolean) => void;
-}) {
-  const shareUrl =
-    typeof window === "undefined"
-      ? ""
-      : (() => {
-          const encoded = encodeWorkout(workout);
-          const url = new URL("/", window.location.origin);
-          url.searchParams.set("data", encoded);
-          return url.toString();
-        })();
-
-  async function copyUrl() {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      onCopiedChange(true);
-      setTimeout(() => onCopiedChange(false), 1500);
-    } catch {
-      onCopiedChange(false);
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={copyUrl}
-      className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
-    >
-      <svg
-        className="h-4 w-4 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-        />
-      </svg>
-      {copied ? "Copied!" : "Copy workout link"}
-    </button>
-  );
-}
+import { VoicePicker } from "./VoicePicker";
 
 const TRACK_COLORS = {
   light: "rgb(228 228 231)",
@@ -105,14 +49,8 @@ function VolumeSlider({
   );
 }
 
-interface SettingsDropdownProps {
-  /** When provided, shows Share option to copy workout link */
-  workout?: Workout | null;
-}
-
-export function SettingsDropdown({ workout }: SettingsDropdownProps = {}) {
+export function SettingsDropdown() {
   const [open, setOpen] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
   const { theme, setTheme, resolved } = useTheme();
   const {
     beepVolume,
@@ -173,46 +111,8 @@ export function SettingsDropdown({ workout }: SettingsDropdownProps = {}) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-zinc-300 bg-zinc-200 py-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="absolute right-0 top-full z-50 mt-2 w-72 max-h-[80vh] overflow-y-auto rounded-xl border border-zinc-300 bg-zinc-200 py-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
           <div className="space-y-4 px-4">
-            {/* How to */}
-            <div>
-              <Link
-                href="/how-to"
-                onClick={() => setOpen(false)}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                <svg
-                  className="h-4 w-4 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                How to
-              </Link>
-            </div>
-
-            {/* Share workout */}
-            {workout && (
-              <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                  Share
-                </div>
-                <ShareWorkoutButton
-                  workout={workout}
-                  copied={shareCopied}
-                  onCopiedChange={setShareCopied}
-                />
-              </div>
-            )}
-
             {/* Theme */}
             <div>
               <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
@@ -224,7 +124,7 @@ export function SettingsDropdown({ workout }: SettingsDropdownProps = {}) {
                   onClick={() => setTheme("light")}
                   className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
                     theme === "light"
-                      ? "bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                      ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:ring-0"
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   }`}
                 >
@@ -248,7 +148,7 @@ export function SettingsDropdown({ workout }: SettingsDropdownProps = {}) {
                   onClick={() => setTheme("dark")}
                   className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
                     theme === "dark"
-                      ? "bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                      ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:ring-0"
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   }`}
                 >
@@ -272,7 +172,7 @@ export function SettingsDropdown({ workout }: SettingsDropdownProps = {}) {
                   onClick={() => setTheme("system")}
                   className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors ${
                     theme === "system"
-                      ? "bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                      ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:ring-0"
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   }`}
                 >
@@ -345,21 +245,29 @@ export function SettingsDropdown({ workout }: SettingsDropdownProps = {}) {
               </div>
             </div>
 
-            {/* Beep volume */}
-            <VolumeSlider
-              value={beepVolume}
-              onChange={setBeepVolume}
-              label="Beep volume"
-              resolved={resolved}
-            />
+            {/* Volume */}
+            <div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Volume
+              </div>
+              <div className="space-y-3 rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-800/80">
+                <VolumeSlider
+                  value={beepVolume}
+                  onChange={setBeepVolume}
+                  label="Beep"
+                  resolved={resolved}
+                />
+                <VolumeSlider
+                  value={voiceVolume}
+                  onChange={setVoiceVolume}
+                  label="Voice"
+                  resolved={resolved}
+                />
+              </div>
+            </div>
 
-            {/* Voice volume */}
-            <VolumeSlider
-              value={voiceVolume}
-              onChange={setVoiceVolume}
-              label="Voice volume"
-              resolved={resolved}
-            />
+            {/* Voice coach picker */}
+            <VoicePicker />
 
             {/* Install app */}
             {(canInstall || showIosInstructions) && !isInstalled && (

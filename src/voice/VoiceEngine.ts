@@ -1,3 +1,5 @@
+import { getSelectedVoiceName } from "@/state/settings-context";
+
 export interface SpeakOptions {
   rate?: number;
   pitch?: number;
@@ -9,12 +11,19 @@ export interface VoiceEngine {
   cancel(): void;
 }
 
-function selectNaturalVoice(): SpeechSynthesisVoice | undefined {
-  if (typeof window === "undefined" || !("speechSynthesis" in window))
-    return undefined;
+function selectVoice(): SpeechSynthesisVoice | undefined {
+  if (typeof window === "undefined" || !window.speechSynthesis) return undefined;
   const voices = window.speechSynthesis.getVoices();
   if (voices.length === 0) return undefined;
-  // Prefer en-US voices that sound natural (Samantha, Karen, Daniel, etc.)
+
+  // Use user-selected voice if set
+  const selectedName = getSelectedVoiceName();
+  if (selectedName) {
+    const match = voices.find((v) => v.name === selectedName);
+    if (match) return match;
+  }
+
+  // Fallback: prefer en-US voices that sound natural
   const preferred = voices.find(
     (v) =>
       v.lang.startsWith("en") &&
@@ -38,7 +47,7 @@ class BrowserSpeechEngine implements VoiceEngine {
     utterance.rate = options?.rate ?? 0.9;
     utterance.pitch = options?.pitch ?? 1;
     if (options?.volume !== undefined) utterance.volume = options.volume;
-    const voice = selectNaturalVoice();
+    const voice = selectVoice();
     if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   }

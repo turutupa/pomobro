@@ -6,6 +6,7 @@ const BEEP_VOLUME_KEY = "pomobro:beepVolume";
 const VOICE_VOLUME_KEY = "pomobro:voiceVolume";
 const VOICE_ENABLED_BY_DEFAULT_KEY = "pomobro:voiceEnabledByDefault";
 const BEEP_ENABLED_BY_DEFAULT_KEY = "pomobro:beepEnabledByDefault";
+const VOICE_NAME_KEY = "pomobro:voiceName";
 
 function getStoredBeepVolume(): number {
   if (typeof window === "undefined") return 1;
@@ -32,6 +33,15 @@ function getStoredBeepEnabledByDefault(): boolean {
   return v === null ? true : v === "true";
 }
 
+function getStoredVoiceName(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(VOICE_NAME_KEY) ?? "";
+}
+
+export function getSelectedVoiceName(): string {
+  return getStoredVoiceName();
+}
+
 export function getBeepVolume(): number {
   return getStoredBeepVolume();
 }
@@ -45,10 +55,12 @@ interface SettingsContextValue {
   voiceVolume: number;
   voiceEnabledByDefault: boolean;
   beepEnabledByDefault: boolean;
+  voiceName: string;
   setBeepVolume: (v: number) => void;
   setVoiceVolume: (v: number) => void;
   setVoiceEnabledByDefault: (v: boolean) => void;
   setBeepEnabledByDefault: (v: boolean) => void;
+  setVoiceName: (v: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(
@@ -61,12 +73,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [voiceEnabledByDefault, setVoiceEnabledByDefaultState] =
     useState(true);
   const [beepEnabledByDefault, setBeepEnabledByDefaultState] = useState(true);
+  const [voiceName, setVoiceNameState] = useState("");
 
   useEffect(() => {
     setBeepVolumeState(getStoredBeepVolume());
     setVoiceVolumeState(getStoredVoiceVolume());
     setVoiceEnabledByDefaultState(getStoredVoiceEnabledByDefault());
     setBeepEnabledByDefaultState(getStoredBeepEnabledByDefault());
+    setVoiceNameState(getStoredVoiceName());
   }, []);
 
   const setBeepVolume = (v: number) => {
@@ -91,6 +105,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(BEEP_ENABLED_BY_DEFAULT_KEY, String(v));
   };
 
+  const setVoiceName = (v: string) => {
+    setVoiceNameState(v);
+    if (v) {
+      localStorage.setItem(VOICE_NAME_KEY, v);
+    } else {
+      localStorage.removeItem(VOICE_NAME_KEY);
+    }
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -98,10 +121,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         voiceVolume,
         voiceEnabledByDefault,
         beepEnabledByDefault,
+        voiceName,
         setBeepVolume,
         setVoiceVolume,
         setVoiceEnabledByDefault,
         setBeepEnabledByDefault,
+        setVoiceName,
       }}
     >
       {children}
