@@ -140,7 +140,7 @@ function WorkoutEditorContent() {
           <div
             className="pointer-events-none absolute inset-x-0 top-0 -z-10"
             style={{
-              height: "150%",
+              height: "200%",
               background: scrolled
                 ? "linear-gradient(to bottom, var(--scrim-color) 0%, var(--scrim-color) 50%, transparent 100%)"
                 : "linear-gradient(to bottom, var(--scrim-color) 0%, transparent 100%)",
