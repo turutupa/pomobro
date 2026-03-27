@@ -157,7 +157,7 @@ export function VoicePicker() {
             >
               {/* Avatar */}
               <div
-                className={`relative h-10 w-10 overflow-hidden rounded-full ring-1.5 transition-all ${
+                className={`relative h-10 w-10 overflow-hidden rounded-full ring-1.5 transition-all duration-200 ease-out group-hover:scale-110 group-hover:-rotate-6 ${
                   isSelected
                     ? "ring-primary-500"
                     : "ring-transparent group-hover:ring-zinc-400/50 dark:group-hover:ring-zinc-500/50"
