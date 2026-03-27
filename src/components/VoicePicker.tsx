@@ -49,8 +49,37 @@ export function VoicePicker() {
         return true;
       });
 
+      // Collapse voices that are locale-only variants (common on Android where
+      // "English United States", "English United Kingdom" etc. all sound identical).
+      // Strategy: normalise the voice name to a base key. Voices that share the same
+      // key are considered duplicates — keep only the first (prefer en-US locale).
+      function voiceBaseKey(v: SpeechSynthesisVoice): string {
+        // Voices with identical voiceURI are the same engine
+        // Strip locale suffix patterns:
+        //   "English United States" / "English United Kingdom" → "english"
+        //   "Google español de Estados Unidos" → keep full (not english, already filtered)
+        //   "Microsoft Zira - English (United States)" → "microsoft zira - english"
+        const name = v.name
+          .toLowerCase()
+          .replace(/\s*\(.*?\)\s*/g, "")                      // remove (parenthesised locale)
+          .replace(/\b(united states|united kingdom|australia|india|south africa|ireland|new zealand|canada|singapore|philippines|kenya|nigeria|hong kong|great britain)\b/gi, "")
+          .replace(/\b(us|uk|au|gb|in|za|ie|nz|ca|sg|ph|ke|ng|hk)\b/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        // Also factor in localService so we don't merge a local + remote voice
+        return `${name}:${v.localService}`;
+      }
+
+      const baseKeySeen = new Set<string>();
+      const collapsed = unique.filter((v) => {
+        const key = voiceBaseKey(v);
+        if (baseKeySeen.has(key)) return false;
+        baseKeySeen.add(key);
+        return true;
+      });
+
       // Sort: preferred voices first, then the rest alphabetically
-      unique.sort((a, b) => {
+      collapsed.sort((a, b) => {
         const aIdx = PREFERRED_VOICES.indexOf(a.name);
         const bIdx = PREFERRED_VOICES.indexOf(b.name);
         if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
@@ -59,7 +88,7 @@ export function VoicePicker() {
         return a.name.localeCompare(b.name);
       });
 
-      const options = unique.map((voice) => ({
+      const options = collapsed.map((voice) => ({
         voice,
         cuteName: getCuteName(voice.name),
         avatarUri: generateAvatarSvg(voice.name),
@@ -69,11 +98,11 @@ export function VoicePicker() {
 
       // Auto-select default voice if user hasn't picked one
       if (!voiceNameRef.current) {
-        const defaultV = unique.find((v) => v.name === DEFAULT_VOICE);
+        const defaultV = collapsed.find((v) => v.name === DEFAULT_VOICE);
         if (defaultV) {
           setVoiceName(defaultV.name);
-        } else if (unique.length > 0) {
-          setVoiceName(unique[0].name);
+        } else if (collapsed.length > 0) {
+          setVoiceName(collapsed[0].name);
         }
       }
     }
