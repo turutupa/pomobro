@@ -96,14 +96,11 @@ export function VoicePicker() {
 
       setVoices(options);
 
-      // Auto-select default voice if user hasn't picked one
-      if (!voiceNameRef.current) {
+      // Auto-select: if no voice chosen yet, or current selection doesn't exist on this device
+      const currentExists = voiceNameRef.current && collapsed.some((v) => v.name === voiceNameRef.current);
+      if (!currentExists && collapsed.length > 0) {
         const defaultV = collapsed.find((v) => v.name === DEFAULT_VOICE);
-        if (defaultV) {
-          setVoiceName(defaultV.name);
-        } else if (collapsed.length > 0) {
-          setVoiceName(collapsed[0].name);
-        }
+        setVoiceName(defaultV ? defaultV.name : collapsed[0].name);
       }
     }
 
