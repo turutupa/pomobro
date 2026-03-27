@@ -13,6 +13,8 @@ import {
 import { getVoiceVolume } from "@/state/settings-context";
 
 const NATURAL_OPTIONS = { rate: 0.88, pitch: 1 };
+/** Countdown numbers need to be snappy — cancel previous speech and speak faster. */
+const COUNTDOWN_OPTIONS = { rate: 1.1, pitch: 1 };
 
 function isWork(interval: unknown): interval is WorkInterval {
   return !!interval && (interval as WorkInterval).type === "work";
@@ -41,6 +43,7 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
     const engine = getVoiceEngine();
     const voiceVolume = getVoiceVolume();
     const speakOptions = { ...NATURAL_OPTIONS, volume: voiceVolume };
+    const countdownOptions = { ...COUNTDOWN_OPTIONS };
     const intervals = expandIntervals(workoutState.workout.intervals);
     const current = intervals[player.currentIndex];
     const muted = current && isMuted(current);
@@ -58,7 +61,8 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
       }
       const rem = player.secondsRemainingInInterval;
       if (rem <= 5 && rem > 0) {
-        engine.speak(String(rem), speakOptions);
+        engine.cancel();
+        engine.speak(String(rem), { ...countdownOptions, volume: voiceVolume });
       }
       return;
     }
@@ -109,7 +113,8 @@ export function PlaybackVoiceController({ enabled }: { enabled: boolean }) {
       player.secondsRemainingInInterval > 0 &&
       player.secondsRemainingInInterval <= 3
     ) {
-      engine.speak(String(player.secondsRemainingInInterval), speakOptions);
+      engine.cancel();
+      engine.speak(String(player.secondsRemainingInInterval), { ...countdownOptions, volume: voiceVolume });
     }
   }, [
     enabled,
